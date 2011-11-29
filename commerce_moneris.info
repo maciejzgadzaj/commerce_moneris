@@ -1,1 +1,9 @@
 name = Commerce Moneris
+description = Integration with Moneris payment. Works for Canada and US gateways.
+package = Commerce
+dependencies[] = commerce
+dependencies[] = commerce_payment
+core = 7.x
+
+files[] = commerce_payment.admin.inc
+files[] = commerce_payment.module

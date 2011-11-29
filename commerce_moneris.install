@@ -1,0 +1,18 @@
+<?php 
+/**
+ * @file
+ * Performs install/uninstall used for Commerce Moneris.
+ *   
+ */
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function commerce_moneris_uninstall() {
+  variable_del('commerce_moneris_gateway');
+  variable_del('commerce_moneris_production');
+  variable_del('commerce_moneris_store_id');
+  variable_del('commerce_moneris_apitoken');
+  variable_del('commerce_moneris_ssl');
+  variable_del('commerce_moneris_curl_certificate_path');
+}
