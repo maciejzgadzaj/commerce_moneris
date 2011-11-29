@@ -1,6 +1,7 @@
 1. Canada Gateway
 1.1 Sandbox testing
-  Configure Moneris settings: /admin/commerce/config/payment-methods/manage/commerce_payment_commerce_moneris
+ Configure Moneris settings: 
+/admin/commerce/config/payment-methods/manage/commerce_payment_commerce_moneris
   - Select Canada Geteway
   - Select Moneris Sandbox 
   - Store ID: store1
@@ -16,13 +17,15 @@
   - Go to moneris sandbox tool: https://esqa.moneris.com/mpg/index.php
   - Login with: demouser/store1/password
   - Once logged in, go to Reports->Transactions and perform a Search
-  - You will see a listing with all transactions (yours and other users that are testing moneris)
+  - You will see a listing with all transactions 
+    (yours and other users that are testing moneris)
 
 
 
 2. US Getway
 2.1 Sandbox testing
-  Configure Moneris settings: /admin/commerce/config/payment-methods/manage/commerce_payment_commerce_moneris
+  Configure Moneris settings: 
+/admin/commerce/config/payment-methods/manage/commerce_payment_commerce_moneris
   - Select US Geteway
   - Select Moneris Sandbox 
   - Store ID: monusqa002
@@ -38,7 +41,8 @@
   - Go to moneris sandbox tool: https://esplusqa.moneris.com/usmpg/index.php
   - Login with: demouser/monsqa002/abc1234
   - Once logged in, go to Reports->Transactions and perform a Search
-  - You will see a listing with all transactions (yours and other users that are testing moneris)
+  - You will see a listing with all transactions 
+    (yours and other users that are testing moneris)
 
 
 
@@ -54,6 +58,7 @@ to alter the values that are sent to Moneris.
 You can use this to override the order_id or customer_id.
 
 
-4. When you are using SSL, then you need to download the cacert.pem and upload it to your server (if it is not already there).
+4. When you are using SSL, then you need to download the cacert.pem 
+and upload it to your server (if it is not already there).
 On the configuration page, you have to set the path to that file.
 This is used for cURL to make SSL requests to Moneris. 
