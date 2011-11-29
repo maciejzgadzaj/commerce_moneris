@@ -1161,6 +1161,3 @@ class mpgTransaction
 
 
 }//end class
-
-
-?>
