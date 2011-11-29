@@ -1158,6 +1158,4 @@ class mpgTransaction
 	{
 		$this->ach = $ach;
 	}
-
-
-}//end class
+}

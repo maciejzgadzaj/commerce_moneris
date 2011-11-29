@@ -7,3 +7,5 @@ core = 7.x
 
 files[] = commerce_payment.admin.inc
 files[] = commerce_payment.module
+files[] = classes/mpgClasses_ca.php
+files[] = classes/mpgClasses_us.php
