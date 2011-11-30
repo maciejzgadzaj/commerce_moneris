@@ -58,15 +58,15 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
   
   $form['moneris_credit_card']['number'] = array(
     '#type' => 'textfield', 
-    '#title' => t('Credit Card Number'), 
-		'#description' => t('Your credit card number.'), 		
+    '#title' => t('Credit Card Number'),
+    '#description' => t('Your credit card number.'),
     '#required' => TRUE, 
-  	'#default_value' => $pane_values['cc']
+    '#default_value' => $pane_values['cc']
   );
   
   $form['moneris_credit_card']['exp_month'] = array(    
     '#type' => 'select',    
-  	'#title' =>  t('Expiration Month'), 
+    '#title' =>  t('Expiration Month'), 
     '#options' => commerce_months(), 
     '#required' => TRUE, 
     '#default_value' => $pane_values['month'], 
@@ -78,7 +78,7 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
     '#title' => t('Expiration Year'), 
     '#options' => drupal_map_assoc(range(date('Y') - 2, date('Y') + 10)), 
     '#required' => TRUE, 
-  	'#default_value' => $pane_values['year'], 
+    '#default_value' => $pane_values['year'], 
     '#description' => t('Your credit card expiration year.')
   );
   
@@ -87,7 +87,7 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
     '#title' => t('CVD'), 
     '#required' => TRUE, 
     '#description' => t('Last 3 or 4 digits on the back of your credit card.'), 
-  	'#default_value' => $pane_values['cvd']
+    '#default_value' => $pane_values['cvd']
   );
     
   return $form;
@@ -119,17 +119,12 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   $transaction->amount = $charge['amount'];
   $transaction->currency_code = $charge['currency_code'];
 
-  // include the class based on gateway
-  $gateway = variable_get('commerce_moneris_gateway', 'ca');
-  $class_path = drupal_get_path('module', 'commerce_moneris') . "/classes/mpgClasses_$gateway.php"; 
-  
-  require_once DRUPAL_ROOT . '/' . $class_path;
-  $monGlobs = new mpgGlobals();
-  
+  // Get the configurations.
+  $gateway = variable_get('commerce_moneris_gateway', 'ca');  
   $store_id = variable_get('commerce_moneris_store_id', '');
   $api_token = variable_get('commerce_moneris_apitoken', '');
     
-  // prepare data  
+  // Prepare data.  
   $amount = number_format($charge['amount']/100, 2, '.', '');
   $pan = $order->data['commerce_moneris']['moneris_credit_card']['number'];
   $expiry_date = substr($order->data['commerce_moneris']['moneris_credit_card']['exp_year'], 2, 2) . $order->data['commerce_moneris']['moneris_credit_card']['exp_month'];  
@@ -138,40 +133,63 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   $order_id = 'order-' . $order->order_id;
   $cust_id = 'customer-' . $order->uid;
   
-  // transaction data  
+  // Create transaction data.  
   $purchase_type = $gateway == 'ca' ? 'purchase' : 'us_purchase';
   $txnArray = array(
     'type' => $purchase_type,
     'order_id' => $order_id,
     'cust_id' => $cust_id, 
-    'amount' => $amount,
+    'amount' => $amount,    
     'pan' => $pan,    
     'expdate' => $expiry_date, 
-    'crypt_type' => '7',
-    'cvd_value' => $cvd,
-    'cvd_indicator' => 1
-  );
-    
-  // allow other modules to alter the txnArray
-  drupal_alter('commerce_moneris_txnarray', $txnArray, $order);
-      
-  // create the transaction object and do the POST to Moneris
-  $mpgTxn = new mpgTransaction($txnArray);
-  $mpgRequest = new mpgRequest($mpgTxn);
-  $mpgHttpPost = new mpgHttpsPost($store_id, $api_token, $mpgRequest);
-  $mpgResponse = $mpgHttpPost->getMpgResponse();
-  
-  watchdog('commerce_moneris', 'Moneris transaction response: !param', array('!param' => '<pre>' . check_plain(print_r($mpgResponse->responseData, TRUE)) . '</pre>'));
-  
-  $transaction->message = 'Moneris ResponseCode: @responsecode <br />
-  												 Moneris ResponseMessage: @message';
-  
-  $transaction->message_variables = array(
-  	'@responsecode' => $mpgResponse->getResponseCode(), 
-  	'@message' => $mpgResponse->getMessage()    
+    'crypt_type' => '7',  
+    'cvd_indicator' => 1,
+    'cvd_value' => $cvd,    
   );
 
-  $response_code = $mpgResponse->getResponseCode();
+  // Allow other modules to alter the txnArray.
+  drupal_alter('commerce_moneris_txnarray', $txnArray, $order);  
+  
+  $commerceMoneris = new commerceMoneris($gateway, $store_id, $api_token);
+  
+  $production = variable_get('commerce_moneris_production', 1);
+  $ssl = variable_get('commerce_moneris_ssl', 0);
+  
+  if ($ssl) {
+    $cacert_path = variable_get('commerce_moneris_curl_certificate_path', '');
+    $result = $commerceMoneris->post($purchase_type, $txnArray, $production, $ssl, $cacert_path);
+  }
+  else {
+    $result = $commerceMoneris->post($purchase_type, $txnArray, $production);    
+  }
+  
+  // If the request failed, display an erorr and log it.
+  if ($result['error_no']) {    
+    watchdog('commerce_moneris', 'Error with cURL request: (!error_no). Message: !error_message', 
+      array(
+        '!error_no' => $result['error_no'], 
+        '!error_message' => check_plain($result['error_message'])), 
+      WATCHDOG_ERROR
+    );
+    drupal_set_message(t('There was an error with your request. Please contact the site administrator.'), 'error');
+        
+    return FALSE;
+  }
+  
+  // Get the response object.
+  $commerceMonerisResponse = $commerceMoneris->getCommerceMonerisResponse();
+  
+  watchdog('commerce_moneris', 'Moneris transaction response: !param', 
+            array('!param' => '<pre>' . check_plain(print_r($commerceMonerisResponse->getResponseData(), TRUE)) . '</pre>'));  
+            
+  $transaction->message = 'Moneris ResponseCode: @responsecode <br />
+  												 Moneris ResponseMessage: @message';  
+  $transaction->message_variables = array(
+    '@responsecode' => $commerceMonerisResponse->getResponseCode(), 
+    '@message' => $commerceMonerisResponse->getMessage()    
+  );
+
+  $response_code = $commerceMonerisResponse->getResponseCode();
      
   if ($response_code != "null") {
     $response_code = intval($response_code);
@@ -194,10 +212,10 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   // If the payment failed, display an error.
   if (! $payment_approved) {
     drupal_set_message(t('We received the following error processing your card. Please enter you information again or try a different card.'), 'error');
-    drupal_set_message(check_plain($mpgResponse->responseData['Message']), 'error');
+    drupal_set_message(check_plain($commerceMonerisResponse->getMessage()), 'error');
     
     return FALSE;
   }
-      
+  
   return TRUE;
 }

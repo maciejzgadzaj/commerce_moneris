@@ -15,7 +15,7 @@ function commerce_moneris_admin_settings() {
     '#type' => 'fieldset',
     '#title' => t('Moneris Settings'),  
     '#collapsible' => TRUE,
-  	'#collapsed' => FALSE
+    '#collapsed' => FALSE
   );  
   
   $form['commerce_moneris']['commerce_moneris_gateway'] = array(    
@@ -29,7 +29,7 @@ function commerce_moneris_admin_settings() {
   );
   
   $form['commerce_moneris']['commerce_moneris_production'] = array(
-  	'#type' => 'radios',
+    '#type' => 'radios',
     '#title' => t('Moneris Server'),
     '#options' => array(
       0 => t('Moneris Sandbox'),
@@ -56,7 +56,7 @@ function commerce_moneris_admin_settings() {
     '#type' => 'fieldset',
     '#title' => t('Moneris SSL Settings'),  
     '#collapsible' => TRUE,
-  	'#collapsed' => FALSE  
+    '#collapsed' => FALSE  
   );
   
   $form['commerce_moneris']['ssl']['commerce_moneris_ssl'] = array(
