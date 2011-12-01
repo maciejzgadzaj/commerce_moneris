@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Provides moneris payment method for Drupal Commerce
+ * Provides moneris payment method for Drupal Commerce.
  *   
  */
  
@@ -114,37 +114,36 @@ function commerce_moneris_submit_form_submit($payment_method, $pane_form, $pane_
  *   The name entered on the submission form.
  */
 function commerce_moneris_transaction($payment_method, $order, $charge, $values) {
-  $transaction = commerce_payment_transaction_new('commerce_moneris', $order->order_id);
-  $transaction->instance_id = $payment_method['instance_id'];
-  $transaction->amount = $charge['amount'];
-  $transaction->currency_code = $charge['currency_code'];
+  $transaction                 = commerce_payment_transaction_new('commerce_moneris', $order->order_id);
+  $transaction->instance_id    = $payment_method['instance_id'];
+  $transaction->amount         = $charge['amount'];
+  $transaction->currency_code  = $charge['currency_code'];
 
   // Get the configurations.
-  $gateway = variable_get('commerce_moneris_gateway', 'ca');  
-  $store_id = variable_get('commerce_moneris_store_id', '');
-  $api_token = variable_get('commerce_moneris_apitoken', '');
+  $gateway     = variable_get('commerce_moneris_gateway', 'ca');  
+  $store_id    = variable_get('commerce_moneris_store_id', '');
+  $api_token   = variable_get('commerce_moneris_apitoken', '');
     
   // Prepare data.  
-  $amount = number_format($charge['amount']/100, 2, '.', '');
-  $pan = $order->data['commerce_moneris']['moneris_credit_card']['number'];
+  $amount      = number_format($charge['amount']/100, 2, '.', '');
+  $pan         = $order->data['commerce_moneris']['moneris_credit_card']['number'];
   $expiry_date = substr($order->data['commerce_moneris']['moneris_credit_card']['exp_year'], 2, 2) . $order->data['commerce_moneris']['moneris_credit_card']['exp_month'];  
-  $cvd = $order->data['commerce_moneris']['moneris_credit_card']['cvd_value'];
-
-  $order_id = 'order-' . $order->order_id;
-  $cust_id = 'customer-' . $order->uid;
+  $cvd         = $order->data['commerce_moneris']['moneris_credit_card']['cvd_value'];
+  $order_id    = 'order-' . $order->order_id;
+  $cust_id     = 'customer-' . $order->uid;
   
   // Create transaction data.  
   $purchase_type = $gateway == 'ca' ? 'purchase' : 'us_purchase';
   $txnArray = array(
     'type' => $purchase_type,
     'order_id' => $order_id,
-    'cust_id' => $cust_id, 
-    'amount' => $amount,    
+    'cust_id' => $cust_id,
+    'amount' => $amount,
     'pan' => $pan,    
     'expdate' => $expiry_date, 
     'crypt_type' => '7',  
     'cvd_indicator' => 1,
-    'cvd_value' => $cvd,    
+    'cvd_value' => $cvd    
   );
 
   // Allow other modules to alter the txnArray.
@@ -152,23 +151,23 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   
   $commerceMoneris = new commerceMoneris($gateway, $store_id, $api_token);
   
-  $production = variable_get('commerce_moneris_production', 1);
-  $ssl = variable_get('commerce_moneris_ssl', 0);
+  $production  = variable_get('commerce_moneris_production', 1);
+  $ssl         = variable_get('commerce_moneris_ssl', 0);
   
   if ($ssl) {
-    $cacert_path = variable_get('commerce_moneris_curl_certificate_path', '');
-    $result = $commerceMoneris->post($purchase_type, $txnArray, $production, $ssl, $cacert_path);
+    $cacert_path  = variable_get('commerce_moneris_curl_certificate_path', '');
+    $result       = $commerceMoneris->post($purchase_type, $txnArray, $production, $ssl, $cacert_path);
   }
   else {
-    $result = $commerceMoneris->post($purchase_type, $txnArray, $production);    
+    $result       = $commerceMoneris->post($purchase_type, $txnArray, $production);    
   }
   
   // If the request failed, display an erorr and log it.
   if ($result['error_no']) {    
     watchdog('commerce_moneris', 'Error with cURL request: (!error_no). Message: !error_message', 
       array(
-        '!error_no' => $result['error_no'], 
-        '!error_message' => check_plain($result['error_message'])), 
+        '!error_no'       => $result['error_no'], 
+        '!error_message'  => check_plain($result['error_message'])), 
       WATCHDOG_ERROR
     );
     drupal_set_message(t('There was an error with your request. Please contact the site administrator.'), 'error');
@@ -178,15 +177,15 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   
   // Get the response object.
   $commerceMonerisResponse = $commerceMoneris->getCommerceMonerisResponse();
-  
+
   watchdog('commerce_moneris', 'Moneris transaction response: !param', 
             array('!param' => '<pre>' . check_plain(print_r($commerceMonerisResponse->getResponseData(), TRUE)) . '</pre>'));  
             
   $transaction->message = 'Moneris ResponseCode: @responsecode <br />
   												 Moneris ResponseMessage: @message';  
   $transaction->message_variables = array(
-    '@responsecode' => $commerceMonerisResponse->getResponseCode(), 
-    '@message' => $commerceMonerisResponse->getMessage()    
+    '@responsecode'  => $commerceMonerisResponse->getResponseCode(), 
+    '@message'       => $commerceMonerisResponse->getMessage()    
   );
 
   $response_code = $commerceMonerisResponse->getResponseCode();
@@ -195,7 +194,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
     $response_code = intval($response_code);
     if ( (0 <= $response_code) && ($response_code <= 49)) {
       $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-      $payment_approved = TRUE;
+      $payment_approved    = TRUE;
     }
     else {
       $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
