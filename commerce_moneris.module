@@ -60,16 +60,14 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
     '#type' => 'textfield', 
     '#title' => t('Credit Card Number'),
     '#description' => t('Your credit card number.'),
-    '#required' => TRUE, 
-    '#default_value' => $pane_values['cc']
+    '#required' => TRUE    
   );
   
   $form['moneris_credit_card']['exp_month'] = array(    
     '#type' => 'select',    
     '#title' =>  t('Expiration Month'), 
     '#options' => commerce_months(), 
-    '#required' => TRUE, 
-    '#default_value' => $pane_values['month'], 
+    '#required' => TRUE,     
     '#description' => t('Your credit card expiration month.')
   );
     
@@ -77,8 +75,7 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
     '#type' => 'select', 
     '#title' => t('Expiration Year'), 
     '#options' => drupal_map_assoc(range(date('Y') - 2, date('Y') + 10)), 
-    '#required' => TRUE, 
-    '#default_value' => $pane_values['year'], 
+    '#required' => TRUE,     
     '#description' => t('Your credit card expiration year.')
   );
   
@@ -86,8 +83,7 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
     '#type' => 'textfield', 
     '#title' => t('CVD'), 
     '#required' => TRUE, 
-    '#description' => t('Last 3 or 4 digits on the back of your credit card.'), 
-    '#default_value' => $pane_values['cvd']
+    '#description' => t('Last 3 or 4 digits on the back of your credit card.'),    
   );
     
   return $form;
