@@ -125,7 +125,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   $pan         = $order->data['commerce_moneris']['moneris_credit_card']['number'];
   $expiry_date = substr($order->data['commerce_moneris']['moneris_credit_card']['exp_year'], 2, 2) . $order->data['commerce_moneris']['moneris_credit_card']['exp_month'];  
   $cvd         = $order->data['commerce_moneris']['moneris_credit_card']['cvd_value'];
-  $order_id    = 'order-' . $order->order_id . '-' . $order->created;
+  $order_id    = 'order-' . $order->order_id . '-' . $order->created . time();
   $cust_id     = 'customer-' . $order->uid;
   
   // Create transaction data.  
@@ -134,7 +134,8 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
     'type' => $purchase_type,
     'order_id' => $order_id,
     'cust_id' => $cust_id,
-    'amount' => $amount,
+    //'amount' => $amount,
+    'amount' => '2.00',
     'pan' => $pan,    
     'expdate' => $expiry_date, 
     'crypt_type' => '7',  
@@ -173,7 +174,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   
   // Get the response object.
   $commerceMonerisResponse = $commerceMoneris->getCommerceMonerisResponse();
-
+     
   watchdog('commerce_moneris', 'Moneris transaction response: !param', 
             array('!param' => '<pre>' . check_plain(print_r($commerceMonerisResponse->getResponseData(), TRUE)) . '</pre>'));  
             
@@ -184,6 +185,9 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
     '@message'       => $commerceMonerisResponse->getMessage()    
   );
 
+  // Set the RemoteID as Moneris TransID.
+  $transaction->remote_id = $commerceMonerisResponse->responseData['TransID'];
+  
   $response_code = $commerceMonerisResponse->getResponseCode();
      
   if ($response_code != "null") {
