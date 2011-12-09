@@ -18,11 +18,11 @@ class CommerceMoneris {
   /**
    * Constructor.
    * @param string $gateway
-   * 	The gateway used for payment ca/us.
+   * 	 The gateway used for payment ca/us.
    * @param string $store_id
-   * 	The store_id.
+   * 	 The store_id.
    * @param string $api_token
-   * 	The api_token.
+   * 	 The api_token.
    */
   function CommerceMoneris($gateway, $store_id, $api_token) {
     $this->gateway = $gateway;
@@ -58,16 +58,17 @@ class CommerceMoneris {
 
   /**
    * Post data to Moneris Gateway using cURL library.
+   * 
    * @param string $type
-   * 	The type of the transaction.
+   * 	 The type of the transaction.
    * @param Array $txn_array
-   * 	Data that will be send to Moneris.
+   * 	 Data that will be send to Moneris.
    * @param Boolean $production
-   * 	Flag indicating if the request goes to Moneris production or sandbox.
+   * 	 Flag indicating if the request goes to Moneris production or sandbox.
    * @param Boolean $ssl
-   * 	Flag indicating if we are using SSL connection.
+   * 	 Flag indicating if we are using SSL connection.
    * @param unknown_type $cacert_path
-   * 	The path to cacert.pem in case $ssl is TRUE.
+   * 	 The path to cacert.pem in case $ssl is TRUE.
    */
   public function post($type, $txn_array, $production = TRUE, $ssl = FALSE, $cacert_path = '') {
     $xml = $this->getXML($type, $txn_array);
@@ -122,7 +123,7 @@ class CommerceMoneris {
 
        $result['error_no'] = 1;
        $result['error_message'] = 'Global Error Receipt';
-     }
+    }
 
      // Create the response object.
      $this->commerce_moneris_response = new CommerceMonerisResponse($response);
@@ -132,10 +133,11 @@ class CommerceMoneris {
 
   /**
    * Generates the xml taht will be sent to Monris.
+   * 
    * @param String $type
-   * The type of the transaction.
+   *   The type of the transaction.
    * @param Array $txn_array
-   * 	Data that will be send to Moneris.
+   * 	 Data that will be send to Moneris.
    */
   private function getXML($type, $txn_array) {
     $request = new CommerceMonerisRequest($this->gateway, $txn_array);
@@ -178,13 +180,13 @@ class CommerceMonerisRequest {
     switch ($gateway) {
       case 'ca':
         $this->txn_types = array(
-  'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
+					'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
         );
         break;
 
       case 'us':
         $this->txn_types = array(
-  'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
+  				'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
         );
         break;
     }
@@ -194,8 +196,9 @@ class CommerceMonerisRequest {
 
   /**
    * Generate the xml for Moneris.
+   * 
    * @param String $type
-   * 	Type of transaction.
+   * 	 Type of transaction.
    */
   function generateXml($type) {
     $xml = "<$type>";
@@ -251,7 +254,7 @@ class CommerceMonerisResponse {
     xml_parse($this->p, $xml_string);
     xml_parser_free($this->p);
   }
-  
+
   /**
    * Returns the response data.
    */
@@ -275,10 +278,11 @@ class CommerceMonerisResponse {
   
   /**
    * Custom function used for parsing.
+   * 
    * @param Object $parser
-   * 	The parser.
+   * 	 The parser.
    * @param Object $data
-   * 	The data.
+   * 	 The data.
    */
   function characterHandler($parser, $data) {
    if ($this->is_batch_totals) {
@@ -333,15 +337,15 @@ class CommerceMonerisResponse {
 
   /**
    * Custom function used for parser.
+   * 
    * @param Object $parser
-   * 	The parser.
+   * 	 The parser.
    * @param String $name
-   * 	The name.
+   * 	 The name.
    * @param Array $attrs
-   * 	The attributes.
+   * 	 The attributes.
    */
-  function startHandler($parser, $name, $attrs) {
-  
+  function startHandler($parser, $name, $attrs) {  
     $this->current_tag = $name;
       
     if ($this->current_tag == "BankTotals") {
@@ -354,7 +358,7 @@ class CommerceMonerisResponse {
     elseif ($this->current_tag == "Refund") {
       $this->refund_hash[$this->term_id][$this->card_type] = array();
       $this->current_txn_type = "Refund";
-     }
+    }
     elseif ($this->current_tag == "Correction") {
       $this->correction_hash[$this->term_id][$this->card_type] = array();
       $this->current_txn_type = "Correction";
@@ -363,10 +367,11 @@ class CommerceMonerisResponse {
 
   /**
    * Custom function used for parser.
+   * 
    * @param Object $parser
-   * 	The parser.
+   * 	 The parser.
    * @param String $name
-   * 	The name.
+   * 	 The name.
    */
   function end_handler($parser, $name) {
     $this->current_tag = $name;
