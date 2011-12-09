@@ -252,7 +252,7 @@ class CommerceMonerisResponse {
     xml_parser_set_option($this->p, XML_OPTION_CASE_FOLDING, 0);
     xml_parser_set_option($this->p, XML_OPTION_TARGET_ENCODING, "UTF-8");
     xml_set_object($this->p, $this);
-    xml_set_element_handler($this->p, "startHandler", "end_handler");
+    xml_set_element_handler($this->p, "startHandler", "endHandler");
     xml_set_character_data_handler($this->p, "characterHandler");
     xml_parse($this->p, $xml_string);
     xml_parser_free($this->p);
@@ -268,17 +268,17 @@ class CommerceMonerisResponse {
   /**
    * Returns the respone code.
    */
-  function getResponseCode() {  
-    return $this->response_data['ResponseCode'];  
+  function getResponseCode() {
+    return $this->response_data['ResponseCode'];
   }
-  
+
   /**
    * Returns the response message.
    */
   function getMessage() {
     return $this->response_data['Message'];
   }
-  
+
   /**
    * Custom function used for parsing.
    *
@@ -295,9 +295,9 @@ class CommerceMonerisResponse {
          array_push($this->ecrs, $this->term_id);
          $this->card_hash[$data] = array();
          break;
-  
+
       case "closed"     :
-        $ecr_hash=$this->ecr_hash;
+        $ecr_hash = $this->ecr_hash;
         $ecr_hash[$this->term_id] = $data;
         $this->ecr_hash = $ecr_hash;
         break;
@@ -348,9 +348,9 @@ class CommerceMonerisResponse {
    * @param Array $attrs
    * 	 The attributes.
    */
-  function startHandler($parser, $name, $attrs) {  
+  function startHandler($parser, $name, $attrs) {
     $this->current_tag = $name;
-      
+
     if ($this->current_tag == "BankTotals") {
       $this->is_batch_totals = 1;
     }
@@ -376,12 +376,12 @@ class CommerceMonerisResponse {
    * @param String $name
    * 	 The name.
    */
-  function end_handler($parser, $name) {
+  function endHandler($parser, $name) {
     $this->current_tag = $name;
     if ($name == "BankTotals") {
       $this->is_batch_totals = 0;
     }
 
-    $this->current_tag="/dev/null";
+    $this->current_tag = "/dev/null";
   }
 }
