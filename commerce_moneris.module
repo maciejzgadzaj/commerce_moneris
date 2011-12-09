@@ -51,7 +51,16 @@ function commerce_moneris_commerce_payment_method_info() {
 }
 
 /**
- * Payment method callback: checkout form.
+ * 
+ * Form used to collect Moneris data.
+ * @param Array $payment_method
+ * 	The payment method instance object used to charge this payment.
+ * @param Array $pane_values
+ * 	The pane values.
+ * @param Array $checkout_pane
+ * 	The checkout pane.
+ * @param Object $order
+ * 	The order object the payment applies to.
  */
 function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
   $form = array();
@@ -74,7 +83,7 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
   $form['moneris_credit_card']['exp_year'] = array(
     '#type' => 'select',
     '#title' => t('Expiration Year'),
-    '#options' => drupal_map_assoc(range(date('Y') - 2, date('Y') + 10)), 
+    '#options' => drupal_map_assoc(range(date('Y') - 2, date('Y') + 10)),
     '#required' => TRUE,
     '#description' => t('Your credit card expiration year.'),
   );
@@ -90,7 +99,18 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
 }
 
 /**
- * Payment method callback: checkout form submission.
+ * 
+ * Handles the form submit.
+ * @param Array $payment_method
+ * 	The payment method instance object used to charge this payment.
+ * @param Array $pane_values
+ * 	The pane values.
+ * @param Array $checkout_pane
+ * 	The checkout pane.
+ * @param Object $order
+ * 	The order object the payment applies to.
+ * @param Array $charge
+ * 	An array indicating the amount and currency code to charge.
  */
 function commerce_moneris_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
   $order->data['commerce_moneris'] = $pane_values;
@@ -192,7 +212,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
 
   if ($response_code != "null") {
     $response_code = intval($response_code);
-    if ( (0 <= $response_code) && ($response_code <= 49)) {
+    if ((0 <= $response_code) && ($response_code <= 49)) {
       $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
       $payment_approved    = TRUE;
     }
@@ -207,7 +227,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   }
 
   commerce_payment_transaction_save($transaction);
-    
+
   // If the payment failed, display an error.
   if (! $payment_approved) {
     drupal_set_message(t('We received the following error processing your card. Please enter your information again or try a different card.'), 'error');

@@ -17,6 +17,7 @@ class CommerceMoneris {
 
   /**
    * Constructor.
+   *
    * @param string $gateway
    * 	 The gateway used for payment ca/us.
    * @param string $store_id
@@ -58,7 +59,7 @@ class CommerceMoneris {
 
   /**
    * Post data to Moneris Gateway using cURL library.
-   * 
+   *
    * @param string $type
    * 	 The type of the transaction.
    * @param Array $txn_array
@@ -133,7 +134,7 @@ class CommerceMoneris {
 
   /**
    * Generates the xml taht will be sent to Monris.
-   * 
+   *
    * @param String $type
    *   The type of the transaction.
    * @param Array $txn_array
@@ -171,6 +172,7 @@ class CommerceMonerisRequest {
 
   /**
    * Constructor of Moneris Request.
+   *
    * @param string $gateway
    * 	Gateway that will be used: ca/us
    * @param Array $txn_array
@@ -196,7 +198,7 @@ class CommerceMonerisRequest {
 
   /**
    * Generate the xml for Moneris.
-   * 
+   *
    * @param String $type
    * 	 Type of transaction.
    */
@@ -240,9 +242,10 @@ class CommerceMonerisResponse {
   var $acs_url;
 
   /**
-   * Constructor of CommerceMonerisResponse
+   * Constructor of CommerceMonerisResponse.
+   *
    * @param string $xml_string
-   * 	The xml string returned by Moneris.
+   *   The xml string returned by Moneris.
    */
   function CommerceMonerisResponse($xml_string) {
     $this->p = xml_parser_create();
@@ -278,7 +281,7 @@ class CommerceMonerisResponse {
   
   /**
    * Custom function used for parsing.
-   * 
+   *
    * @param Object $parser
    * 	 The parser.
    * @param Object $data
@@ -337,7 +340,7 @@ class CommerceMonerisResponse {
 
   /**
    * Custom function used for parser.
-   * 
+   *
    * @param Object $parser
    * 	 The parser.
    * @param String $name
@@ -367,7 +370,7 @@ class CommerceMonerisResponse {
 
   /**
    * Custom function used for parser.
-   * 
+   *
    * @param Object $parser
    * 	 The parser.
    * @param String $name
