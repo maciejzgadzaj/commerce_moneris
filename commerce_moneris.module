@@ -106,8 +106,8 @@ function commerce_moneris_submit_form_submit($payment_method, $pane_form, $pane_
  *   The order object the payment applies to.
  * @param $charge
  *   An array indicating the amount and currency code to charge.
- * @param $name
- *   The name entered on the submission form.
+ * @param values
+ * 	The vlaues submited by user.  
  */
 function commerce_moneris_transaction($payment_method, $order, $charge, $values) {
   $transaction                 = commerce_payment_transaction_new('commerce_moneris', $order->order_id);
@@ -173,22 +173,22 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   }
   
   // Get the response object.
-  $commerce_moneris_response = $commerce_moneris->get_commerce_moneris_response();
+  $commerce_moneris_response = $commerce_moneris->getCommerceMonerisResponse();
 
   watchdog('commerce_moneris', 'Moneris transaction response: !param',
-            array('!param' => '<pre>' . check_plain(print_r($commerce_moneris_response->get_response_data(), TRUE)) . '</pre>'));
+            array('!param' => '<pre>' . check_plain(print_r($commerce_moneris_response->getResponseData(), TRUE)) . '</pre>'));
 
   $transaction->message = 'Moneris ResponseCode: @responsecode <br />
   												 Moneris ResponseMessage: @message';
   $transaction->message_variables = array(
-    '@responsecode'  => $commerce_moneris_response->get_response_code(), 
-    '@message'       => $commerce_moneris_response->get_message(),
+    '@responsecode'  => $commerce_moneris_response->getResponseCode(), 
+    '@message'       => $commerce_moneris_response->getMessage(),
   );
 
   // Set the RemoteID as Moneris TransID.
   $transaction->remote_id = $commerce_moneris_response->response_data['TransID'];
 
-  $response_code = $commerce_moneris_response->get_response_code();
+  $response_code = $commerce_moneris_response->getResponseCode();
 
   if ($response_code != "null") {
     $response_code = intval($response_code);
@@ -211,7 +211,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   // If the payment failed, display an error.
   if (! $payment_approved) {
     drupal_set_message(t('We received the following error processing your card. Please enter your information again or try a different card.'), 'error');
-    drupal_set_message(check_plain($commerce_moneris_response->get_message()), 'error');
+    drupal_set_message(check_plain($commerce_moneris_response->getMessage()), 'error');
 
     return FALSE;
   }

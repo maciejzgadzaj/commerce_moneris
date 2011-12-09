@@ -8,13 +8,13 @@
 
 class CommerceMoneris {
   var $globals;
-  
+
   var $gateway;
   var $store_id;
   var $api_token;
-  
+
   var $commerce_moneris_response;
-  
+
   /**
    * 
    * Constructor
@@ -67,13 +67,13 @@ class CommerceMoneris {
     $xml = $this->get_xml($type, $txn_array);
 
     // Post the xml to Moneris.
-    $url =  $this->globals['MONERIS_PROTOCOL'] . "://";
+    $url = $this->globals['MONERIS_PROTOCOL'] . "://";
     $url .= ($production ? $this->globals['MONERIS_HOST'] : $this->globals['MONERIS_TEST_HOST']) . ":";
     $url .= $this->globals['MONERIS_PORT'] . $this->globals['MONERIS_FILE'];
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER,   1);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_HEADER, 0);
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $xml);
@@ -103,15 +103,16 @@ class CommerceMoneris {
     curl_close($ch);
 
     if (!$response && !$error_no) {
-       $response = "<?xml version=\"1.0\"?><response><receipt>" . 
-            "<ReceiptId>Global Error Receipt</ReceiptId>" . 
-            "<ReferenceNum>null</ReferenceNum><ResponseCode>null</ResponseCode>" . 
-            "<ISO>null</ISO> <AuthCode>null</AuthCode><TransTime>null</TransTime>" . 
-            "<TransDate>null</TransDate><TransType>null</TransType><Complete>false</Complete>" . 
-            "<Message>null</Message><TransAmount>null</TransAmount>" . 
-            "<card_type>null</card_type>" . 
-            "<TransID>null</TransID><TimedOut>null</TimedOut>" . 
-            "</receipt></response>";      
+       $response = "<?xml version=\"1.0\"?>
+       			<response><receipt>  
+              <ReceiptId>Global Error Receipt</ReceiptId> 
+              <ReferenceNum>null</ReferenceNum><ResponseCode>null</ResponseCode> 
+              <ISO>null</ISO> <AuthCode>null</AuthCode><TransTime>null</TransTime> 
+              <TransDate>null</TransDate><TransType>null</TransType><Complete>false</Complete> 
+              <Message>null</Message><TransAmount>null</TransAmount>
+              <card_type>null</card_type> 
+              <TransID>null</TransID><TimedOut>null</TimedOut> 
+            </receipt></response>";
 
        $result['error_no'] = 1;
        $result['error_message'] = 'Global Error Receipt';       
@@ -120,9 +121,9 @@ class CommerceMoneris {
      // Create the response object.
      $this->commerce_moneris_response = new CommerceMonerisResponse($response);
       
-     return $result;        
+     return $result;
   }
-  
+
   /**
    * 
    * Generates the xml taht will be sent to Monris.
@@ -133,12 +134,12 @@ class CommerceMoneris {
     $request = new CommerceMonerisRequest($this->gateway, $txn_array);
     $request_xml = $request->generate_xml($type);
 
-    $xml .= "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?>" . 
-            "<request>" . 
-            "<store_id>$this->store_id</store_id>" .  
-            "<api_token>$this->api_token</api_token>" 
-            . $request_xml . 
-            "</request>";
+    $xml .= "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?> 
+            <request> 
+            <store_id>$this->store_id</store_id>  
+            <api_token>$this->api_token</api_token> 
+              $request_xml 
+            </request>";
 
     return $xml;
   }
@@ -147,7 +148,7 @@ class CommerceMoneris {
    * 
    * Get the moneris response object.
    */
-  public function get_commerce_moneris_response() {
+  public function getCommerceMonerisResponse() {
     return $this->commerce_moneris_response;
   }
 }
@@ -168,7 +169,7 @@ class CommerceMonerisRequest {
    * @param unknown_type $gateway
    * @param unknown_type $txn_array
    */
-  function commerceMonerisRequest($gateway, $txn_array) {
+  function CommerceMonerisRequest($gateway, $txn_array) {
     switch ($gateway) {
       case 'ca':
         $this->txn_types = array(
@@ -236,25 +237,25 @@ class CommerceMonerisResponse {
     xml_parser_set_option($this->p, XML_OPTION_CASE_FOLDING, 0);
     xml_parser_set_option($this->p, XML_OPTION_TARGET_ENCODING, "UTF-8");
     xml_set_object($this->p, $this);
-    xml_set_element_handler($this->p, "start_handler", "end_handler");
-    xml_set_character_data_handler($this->p, "character_handler");
+    xml_set_element_handler($this->p, "startHandler", "end_handler");
+    xml_set_character_data_handler($this->p, "characterHandler");
     xml_parse($this->p, $xml_string);
     xml_parser_free($this->p);
   }
   
-  public function get_response_data() {
+  public function getResponseData() {
     return $this->response_data;
   }
 
-  function get_response_code() {  
+  function getResponseCode() {  
     return $this->response_data['ResponseCode'];  
   }
   
-  function get_message() {
+  function getMessage() {
     return $this->response_data['Message'];
   }
   
-  function character_handler($parser, $data) {
+  function characterHandler($parser, $data) {
    if ($this->is_batch_totals) {
      switch ($this->current_tag) {
        case "term_id"    :
@@ -305,7 +306,7 @@ class CommerceMonerisResponse {
    }
   }
 
-  function start_handler($parser, $name, $attrs) {
+  function startHandler($parser, $name, $attrs) {
   
     $this->current_tag = $name;
       
