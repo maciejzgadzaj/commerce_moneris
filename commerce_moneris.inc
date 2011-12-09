@@ -70,7 +70,7 @@ class CommerceMoneris {
    * 	The path to cacert.pem in case $ssl is TRUE.
    */
   public function post($type, $txn_array, $production = TRUE, $ssl = FALSE, $cacert_path = '') {
-    $xml = $this->get_xml($type, $txn_array);
+    $xml = $this->getXML($type, $txn_array);
 
     // Post the xml to Moneris.
     $url = $this->globals['MONERIS_PROTOCOL'] . "://";
@@ -121,25 +121,25 @@ class CommerceMoneris {
             </receipt></response>";
 
        $result['error_no'] = 1;
-       $result['error_message'] = 'Global Error Receipt';       
+       $result['error_message'] = 'Global Error Receipt';
      }
-     
+
      // Create the response object.
      $this->commerce_moneris_response = new CommerceMonerisResponse($response);
-      
+
      return $result;
   }
 
   /**
    * Generates the xml taht will be sent to Monris.
    * @param String $type
-   * 	The type of the transaction.
+   * The type of the transaction.
    * @param Array $txn_array
    * 	Data that will be send to Moneris.
    */
-  private function get_xml($type, $txn_array) {
+  private function getXML($type, $txn_array) {
     $request = new CommerceMonerisRequest($this->gateway, $txn_array);
-    $request_xml = $request->generate_xml($type);
+    $request_xml = $request->generateXml($type);
 
     $xml .= "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?> 
             <request> 
@@ -152,7 +152,6 @@ class CommerceMoneris {
   }
 
   /**
-   *
    * Get the moneris response object.
    */
   public function getCommerceMonerisResponse() {
@@ -161,15 +160,13 @@ class CommerceMoneris {
 }
 
 /**
- * 
  * Class that handels the Moneris Request.
  * @author ionut
- *
  */
 class CommerceMonerisRequest {
   var $txn_types;
   var $txn_array;
-  
+
   /**
    * Constructor of Moneris Request.
    * @param string $gateway
@@ -183,13 +180,13 @@ class CommerceMonerisRequest {
         $this->txn_types = array(
   'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
         );
-      break;
+        break;
 
       case 'us':
         $this->txn_types = array(
   'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
         );
-      break;
+        break;
     }
 
     $this->txn_array = $txn_array;
@@ -200,7 +197,7 @@ class CommerceMonerisRequest {
    * @param String $type
    * 	Type of transaction.
    */
-  function generate_xml($type) {
+  function generateXml($type) {
     $xml = "<$type>";
     foreach ($this->txn_types[$type] as $t) {
       if ($this->txn_array[$t]) {
@@ -215,10 +212,8 @@ class CommerceMonerisRequest {
 }
 
 /**
- * 
  * Handles the Moneris Response.
  * @author ionut
- *
  */
 class CommerceMonerisResponse {
   var $response_data;
@@ -289,22 +284,22 @@ class CommerceMonerisResponse {
    if ($this->is_batch_totals) {
      switch ($this->current_tag) {
        case "term_id"    :
-        $this->term_id = $data;
-        array_push($this->ecrs, $this->term_id);
-        $this->card_hash[$data] = array();
-      break;
+         $this->term_id = $data;
+         array_push($this->ecrs, $this->term_id);
+         $this->card_hash[$data] = array();
+         break;
   
       case "closed"     :
         $ecr_hash=$this->ecr_hash;
         $ecr_hash[$this->term_id] = $data;
         $this->ecr_hash = $ecr_hash;
-      break;
+        break;
 
       case "card_type"   :
         $this->card_type = $data;
         $this->cards[$data] = $data;
         array_push($this->card_hash[$this->term_id], $data);
-      break;
+        break;
 
       case "Amount"     :
         if ($this->current_txn_type == "Purchase") {
@@ -316,7 +311,7 @@ class CommerceMonerisResponse {
         elseif ( $this->current_txn_type == "Correction") {
           $this->correction_hash[$this->term_id][$this->card_type]['Amount'] = $data;
         }
-      break;
+        break;
 
       case "Count"     :
         if ($this->current_txn_type == "Purchase") {
@@ -328,7 +323,7 @@ class CommerceMonerisResponse {
         elseif ( $this->current_txn_type == "Correction") {
           $this->correction_hash[$this->term_id][$this->card_type]['Count'] = $data;
         }
-      break;
+        break;
      }
    }
    else {
