@@ -169,23 +169,23 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
 
   $commerce_moneris = new CommerceMoneris($gateway, $store_id, $api_token);
 
-  $production  = variable_get('commerce_moneris_production', 1);
-  $ssl         = variable_get('commerce_moneris_ssl', 0);
+  $production = variable_get('commerce_moneris_production', 1);
+  $ssl = variable_get('commerce_moneris_ssl', 0);
 
   if ($ssl) {
-    $cacert_path  = variable_get('commerce_moneris_curl_certificate_path', '');
-    $result       = $commerce_moneris->post($purchase_type, $txn_array, $production, $ssl, $cacert_path);
+    $cacert_path = variable_get('commerce_moneris_curl_certificate_path', '');
+    $result = $commerce_moneris->post($purchase_type, $txn_array, $production, $ssl, $cacert_path);
   }
   else {
-    $result       = $commerce_moneris->post($purchase_type, $txn_array, $production);
+    $result = $commerce_moneris->post($purchase_type, $txn_array, $production);
   }
 
   // If the request failed, display an erorr and log it.
   if ($result['error_no']) {
     watchdog('commerce_moneris', 'Error with cURL request: (!error_no). Message: !error_message',
       array(
-        '!error_no'       => $result['error_no'],
-        '!error_message'  => check_plain($result['error_message'])),
+        '!error_no' => $result['error_no'],
+        '!error_message' => check_plain($result['error_message'])),
       WATCHDOG_ERROR
     );
     drupal_set_message(t('There was an error with your request. Please contact the site administrator.'), 'error');
@@ -202,8 +202,8 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   $transaction->message = 'Moneris ResponseCode: @responsecode <br />
   												 Moneris ResponseMessage: @message';
   $transaction->message_variables = array(
-    '@responsecode'  => $commerce_moneris_response->getResponseCode(),
-    '@message'       => $commerce_moneris_response->getMessage(),
+    '@responsecode' => $commerce_moneris_response->getResponseCode(),
+    '@message' => $commerce_moneris_response->getMessage(),
   );
 
   // Set the RemoteID as Moneris TransID.
@@ -215,7 +215,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
     $response_code = intval($response_code);
     if ((0 <= $response_code) && ($response_code <= 49)) {
       $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-      $payment_approved    = TRUE;
+      $payment_approved = TRUE;
     }
     else {
       $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
