@@ -48,9 +48,9 @@ On checkout form, select Moneris and use the following:
 
 3. Alter data that is sent to Moneris
 Use a function like:
-function mymodule_commerce_moneris_txnarray_alter(&$txnArray, $order) {
+function mymodule_commerce_moneris_txnarray_alter(&$txn_array, $order) {
   ...
-  $txnArray['order_id'] = $my_order_id;
+  $txn_array['order_id'] = $my_order_id;
   ...
 }
 

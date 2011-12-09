@@ -13,12 +13,12 @@ function commerce_moneris_admin_settings() {
 
   $form['commerce_moneris'] = array(
     '#type' => 'fieldset',
-		'#title' => t('Moneris Settings'),
+    '#title' => t('Moneris Settings'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
 
-  $form['commerce_moneris']['commerce_moneris_gateway'] = array(    
+  $form['commerce_moneris']['commerce_moneris_gateway'] = array(
     '#type' => 'select',
     '#title' => t('Moneris Gateway'),
     '#options' => array(
