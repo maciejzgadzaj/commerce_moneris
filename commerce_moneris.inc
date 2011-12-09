@@ -312,10 +312,10 @@ class CommerceMonerisResponse {
         if ($this->current_txn_type == "Purchase") {
            $this->purchase_hash[$this->term_id][$this->card_type]['Amount'] = $data;
         }
-        elseif ( $this->current_txn_type == "Refund") {
+        elseif ($this->current_txn_type == "Refund") {
           $this->refund_hash[$this->term_id][$this->card_type]['Amount'] = $data;
         }
-        elseif ( $this->current_txn_type == "Correction") {
+        elseif ($this->current_txn_type == "Correction") {
           $this->correction_hash[$this->term_id][$this->card_type]['Amount'] = $data;
         }
         break;
@@ -324,17 +324,17 @@ class CommerceMonerisResponse {
         if ($this->current_txn_type == "Purchase") {
            $this->purchase_hash[$this->term_id][$this->card_type]['Count'] = $data;
         }
-        elseif ( $this->current_txn_type == "Refund") {
+        elseif ($this->current_txn_type == "Refund") {
           $this->refund_hash[$this->term_id][$this->card_type]['Count'] = $data;
         }
-        elseif ( $this->current_txn_type == "Correction") {
+        elseif ($this->current_txn_type == "Correction") {
           $this->correction_hash[$this->term_id][$this->card_type]['Count'] = $data;
         }
         break;
      }
    }
    else {
-      $this->response_data[$this->current_tag] .= $data;
+     $this->response_data[$this->current_tag] .= $data;
    }
   }
 

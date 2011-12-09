@@ -51,8 +51,8 @@ function commerce_moneris_commerce_payment_method_info() {
 }
 
 /**
- *
  * Form used to collect Moneris data.
+ * 
  * @param Array $payment_method
  * 	The payment method instance object used to charge this payment.
  * @param Array $pane_values
@@ -127,7 +127,7 @@ function commerce_moneris_submit_form_submit($payment_method, $pane_form, $pane_
  *   The order object the payment applies to.
  * @param $charge
  *   An array indicating the amount and currency code to charge.
- * @param values
+ * @param $values
  * 	The vlaues submited by user.
  */
 function commerce_moneris_transaction($payment_method, $order, $charge, $values) {
