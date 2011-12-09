@@ -13,17 +13,17 @@ function commerce_moneris_admin_settings() {
 
   $form['commerce_moneris'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Moneris Settings'),  
+		'#title' => t('Moneris Settings'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
-  
+
   $form['commerce_moneris']['commerce_moneris_gateway'] = array(    
     '#type' => 'select',
     '#title' => t('Moneris Gateway'),
     '#options' => array(
         'ca' => t('Canada'),
-        'us' => t('US')
+        'us' => t('US'),
       ),
     '#default_value' => variable_get('commerce_moneris_gateway', 'ca'),
   );
@@ -33,7 +33,7 @@ function commerce_moneris_admin_settings() {
     '#title' => t('Moneris Server'),
     '#options' => array(
       0 => t('Moneris Sandbox'),
-      1 => t('Moneris Production') 
+      1 => t('Moneris Production'),
     ),
     '#default_value' => variable_get('commerce_moneris_production'),
   );
@@ -54,15 +54,15 @@ function commerce_moneris_admin_settings() {
 
   $form['commerce_moneris']['ssl'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Moneris SSL Settings'),  
+    '#title' => t('Moneris SSL Settings'),
     '#collapsible' => TRUE,
-    '#collapsed' => FALSE,  
+    '#collapsed' => FALSE,
   );
 
   $form['commerce_moneris']['ssl']['commerce_moneris_ssl'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use SSL'),
-    '#default_value' => variable_get('commerce_moneris_ssl', 0),    
+    '#default_value' => variable_get('commerce_moneris_ssl', 0),
   );
 
   $form['commerce_moneris']['ssl']['commerce_moneris_curl_certificate_path'] = array(
