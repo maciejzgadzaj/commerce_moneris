@@ -147,7 +147,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   $expiry_date = substr($order->data['commerce_moneris']['moneris_credit_card']['exp_year'], 2, 2);
   $expiry_date .= $order->data['commerce_moneris']['moneris_credit_card']['exp_month'];
   $cvd         = $order->data['commerce_moneris']['moneris_credit_card']['cvd_value'];
-  $order_id    = 'order-' . $order->order_id . '-' . $order->created . time();
+  $order_id    = 'order-' . $order->order_id . '-' . time();
   $cust_id     = 'customer-' . $order->uid;
 
   // Create transaction data.

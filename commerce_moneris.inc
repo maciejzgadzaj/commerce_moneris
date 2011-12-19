@@ -99,6 +99,7 @@ class CommerceMoneris {
 
     $response = curl_exec($ch);
 
+    $result = NULL;
     // Check for cURL errors.
     $error_no = curl_errno($ch);
     if ($error_no) {
@@ -144,7 +145,7 @@ class CommerceMoneris {
     $request = new CommerceMonerisRequest($this->gateway, $txn_array);
     $request_xml = $request->generateXml($type);
 
-    $xml .= "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?> 
+    $xml = "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?> 
             <request> 
             <store_id>$this->store_id</store_id>  
             <api_token>$this->api_token</api_token> 
@@ -333,8 +334,8 @@ class CommerceMonerisResponse {
         break;
      }
    }
-   else {
-     $this->response_data[$this->current_tag] .= $data;
+   else {     
+     $this->response_data[$this->current_tag] = $data;     
    }
   }
 
