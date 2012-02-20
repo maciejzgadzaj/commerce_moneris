@@ -7,28 +7,28 @@
  */
 
 class CommerceMoneris {
-  var $globals;
+  private $globals;
 
-  var $gateway;
-  var $store_id;
-  var $api_token;
+  private $gateway;
+  private $storeId;
+  private $apiToken;
 
-  var $commerce_moneris_response;
+  private $commerce_moneris_response;
 
   /**
    * Constructor.
    *
    * @param string $gateway
    * 	 The gateway used for payment ca/us.
-   * @param string $store_id
-   * 	 The store_id.
-   * @param string $api_token
-   * 	 The api_token.
+   * @param string $storeId
+   * 	 The storeId.
+   * @param string $apiToken
+   * 	 The apiToken.
    */
-  function __construct($gateway, $store_id, $api_token) {
+  function __construct($gateway, $storeId, $apiToken) {
     $this->gateway = $gateway;
-    $this->store_id = $store_id;
-    $this->api_token = $api_token;
+    $this->storeId = $storeId;
+    $this->apiToken = $apiToken;
 
     switch ($gateway) {
       case 'ca':
@@ -101,28 +101,35 @@ class CommerceMoneris {
 
     $result = NULL;
     // Check for cURL errors.
-    $error_no = curl_errno($ch);
-    if ($error_no) {
+    $errorno = curl_errno($ch);
+    if ($errorno) {
       $error_message = curl_error($ch);
 
-      $result['error_no'] = $error_no;
+      $result['error_no'] = $errorno;
       $result['error_message'] = $error_message;
     }
 
     curl_close($ch);
 
-    if (!$response && !$error_no) {
+    if (!$response && !$errorno) {
        $response = "<?xml version=\"1.0\"?>
        			<response><receipt>  
-              <ReceiptId>Global Error Receipt</ReceiptId> 
-              <ReferenceNum>null</ReferenceNum><ResponseCode>null</ResponseCode> 
-              <ISO>null</ISO> <AuthCode>null</AuthCode><TransTime>null</TransTime> 
-              <TransDate>null</TransDate><TransType>null</TransType><Complete>false</Complete> 
-              <Message>null</Message><TransAmount>null</TransAmount>
-              <card_type>null</card_type> 
-              <TransID>null</TransID><TimedOut>null</TimedOut> 
-            </receipt></response>";
-
+              <receiptid>Global Error Receipt</receiptid> 
+              <referencenum>null</referencenum>
+              <responsecode>null</responsecode> 
+              <iso>null</iso>
+              <authcode>null</authcode>
+              <transtime>null</transtime> 
+              <transdate>null</transdate>
+              <transtype>null</transtype>
+              <complete>false</complete> 
+              <message>null</message>
+              <transamount>null</transamount>
+              <cardType>null</cardType> 
+              <transid>null</transid>
+              <timedout>null</timedout> 
+            </receipt></response>";      
+      
        $result['error_no'] = 1;
        $result['error_message'] = 'Global Error Receipt';
     }
@@ -141,15 +148,15 @@ class CommerceMoneris {
    * @param Array $txn_array
    * 	 Data that will be send to Moneris.
    */
-  private function getXML($type, $txn_array) {
-    $request = new CommerceMonerisRequest($this->gateway, $txn_array);
-    $request_xml = $request->generateXml($type);
+  private function getXML($type, $txnArray) {
+    $request = new CommerceMonerisRequest($this->gateway, $txnArray);
+    $requestXml = $request->generateXml($type);
 
     $xml = "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?> 
             <request> 
-            <store_id>$this->store_id</store_id>  
-            <api_token>$this->api_token</api_token> 
-              $request_xml 
+            <store_id>$this->storeId</store_id>  
+            <api_token>$this->apiToken</api_token> 
+              $requestXml 
             </request>";
 
     return $xml;
@@ -168,8 +175,8 @@ class CommerceMoneris {
  * @author ionut
  */
 class CommerceMonerisRequest {
-  var $txn_types;
-  var $txn_array;
+  private $txnTypes;
+  private $txnArray;
 
   /**
    * Constructor of Moneris Request.
@@ -179,22 +186,22 @@ class CommerceMonerisRequest {
    * @param Array $txn_array
    * 	Data that will be send to Moneris
    */
-  function __construct($gateway, $txn_array) {
+  function __construct($gateway, $txnArray) {
     switch ($gateway) {
       case 'ca':
-        $this->txn_types = array(
+        $this->txnTypes = array(
 					'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
         );
         break;
 
       case 'us':
-        $this->txn_types = array(
+        $this->txnTypes = array(
   				'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
         );
         break;
     }
 
-    $this->txn_array = $txn_array;
+    $this->txnArray = $txnArray;
   }
 
   /**
@@ -205,9 +212,9 @@ class CommerceMonerisRequest {
    */
   function generateXml($type) {
     $xml = "<$type>";
-    foreach ($this->txn_types[$type] as $t) {
-      if ($this->txn_array[$t]) {
-        $xml .= "<$t>" . $this->txn_array[$t] . "</$t>";
+    foreach ($this->txnTypes[$type] as $t) {
+      if ($this->txnArray[$t]) {
+        $xml .= "<$t>" . $this->txnArray[$t] . "</$t>";
       }
     }
 
@@ -222,23 +229,23 @@ class CommerceMonerisRequest {
  * @author ionut
  */
 class CommerceMonerisResponse {
-  var $response_data;
+  private $responseData;
 
-  var $p;
+  private $p;
 
-  var $current_tag;
-  var $purchase_hash = array();
-  var $refund_hash;
-  var $correction_hash = array();
-  var $is_batch_totals;
-  var $term_id;
-  var $receipt_hash = array();
-  var $ecr_hash = array();
-  var $card_type;
-  var $current_txn_type;
-  var $ecrs = array();
-  var $cards = array();
-  var $card_hash = array();
+  private $currentTag;
+  private $purchaseHash = array();
+  private $refundHash;
+  private $correctionHash = array();
+  private $isBatchTotals;
+  private $termId;
+  private $receipt_hash = array();
+  private $ecrHash = array();
+  private $cardType;
+  private $currentTxnType;
+  private $ecrs = array();
+  private $cards = array();
+  private $card_hash = array();
 
   var $acs_url;
 
@@ -263,21 +270,21 @@ class CommerceMonerisResponse {
    * Returns the response data.
    */
   public function getResponseData() {
-    return $this->response_data;
+    return $this->responseData;
   }
 
   /**
    * Returns the respone code.
    */
   function getResponseCode() {
-    return $this->response_data['ResponseCode'];
+    return $this->responseData['ResponseCode'];
   }
 
   /**
    * Returns the response message.
    */
   function getMessage() {
-    return $this->response_data['Message'];
+    return $this->responseData['Message'];
   }
 
   /**
@@ -289,53 +296,53 @@ class CommerceMonerisResponse {
    * 	 The data.
    */
   function characterHandler($parser, $data) {
-   if ($this->is_batch_totals) {
-     switch ($this->current_tag) {
+   if ($this->isBatchTotals) {
+     switch ($this->currentTag) {
        case "term_id"    :
-         $this->term_id = $data;
-         array_push($this->ecrs, $this->term_id);
+         $this->termId = $data;
+         array_push($this->ecrs, $this->termId);
          $this->card_hash[$data] = array();
          break;
 
       case "closed"     :
-        $ecr_hash = $this->ecr_hash;
-        $ecr_hash[$this->term_id] = $data;
-        $this->ecr_hash = $ecr_hash;
+        $ecrHash = $this->ecrHash;
+        $ecrHash[$this->termId] = $data;
+        $this->ecrHash = $ecrHash;
         break;
 
       case "card_type"   :
-        $this->card_type = $data;
+        $this->cardType = $data;
         $this->cards[$data] = $data;
-        array_push($this->card_hash[$this->term_id], $data);
+        array_push($this->card_hash[$this->termId], $data);
         break;
 
-      case "Amount"     :
-        if ($this->current_txn_type == "Purchase") {
-           $this->purchase_hash[$this->term_id][$this->card_type]['Amount'] = $data;
+      case "amount"     :
+        if ($this->currentTxnType == "Purchase") {
+           $this->purchaseHash[$this->termId][$this->cardType]['Amount'] = $data;
         }
-        elseif ($this->current_txn_type == "Refund") {
-          $this->refund_hash[$this->term_id][$this->card_type]['Amount'] = $data;
+        elseif ($this->currentTxnType == "Refund") {
+          $this->refundHash[$this->termId][$this->cardType]['Amount'] = $data;
         }
-        elseif ($this->current_txn_type == "Correction") {
-          $this->correction_hash[$this->term_id][$this->card_type]['Amount'] = $data;
+        elseif ($this->currentTxnType == "Correction") {
+          $this->correctionHash[$this->termId][$this->cardType]['Amount'] = $data;
         }
         break;
 
-      case "Count"     :
-        if ($this->current_txn_type == "Purchase") {
-           $this->purchase_hash[$this->term_id][$this->card_type]['Count'] = $data;
+      case "count"     :
+        if ($this->currentTxnType == "Purchase") {
+           $this->purchaseHash[$this->termId][$this->cardType]['Count'] = $data;
         }
-        elseif ($this->current_txn_type == "Refund") {
-          $this->refund_hash[$this->term_id][$this->card_type]['Count'] = $data;
+        elseif ($this->currentTxnType == "Refund") {
+          $this->refundHash[$this->termId][$this->cardType]['Count'] = $data;
         }
-        elseif ($this->current_txn_type == "Correction") {
-          $this->correction_hash[$this->term_id][$this->card_type]['Count'] = $data;
+        elseif ($this->currentTxnType == "Correction") {
+          $this->correctionHash[$this->termId][$this->cardType]['Count'] = $data;
         }
         break;
      }
    }
    else {     
-     $this->response_data[$this->current_tag] = $data;     
+     $this->responseData[$this->currentTag] = $data;     
    }
   }
 
@@ -350,22 +357,22 @@ class CommerceMonerisResponse {
    * 	 The attributes.
    */
   function startHandler($parser, $name, $attrs) {
-    $this->current_tag = $name;
+    $this->currentTag = $name;
 
-    if ($this->current_tag == "BankTotals") {
-      $this->is_batch_totals = 1;
+    if ($this->currentTag == "BankTotals") {
+      $this->isBatchTotals = 1;
     }
-    elseif ($this->current_tag == "Purchase") {
-      $this->purchase_hash[$this->term_id][$this->card_type] = array();
-      $this->current_txn_type = "Purchase";
+    elseif ($this->currentTag == "Purchase") {
+      $this->purchaseHash[$this->termId][$this->cardType] = array();
+      $this->currentTxnType = "Purchase";
     }
-    elseif ($this->current_tag == "Refund") {
-      $this->refund_hash[$this->term_id][$this->card_type] = array();
-      $this->current_txn_type = "Refund";
+    elseif ($this->currentTag == "Refund") {
+      $this->refundHash[$this->termId][$this->cardType] = array();
+      $this->currentTxnType = "Refund";
     }
-    elseif ($this->current_tag == "Correction") {
-      $this->correction_hash[$this->term_id][$this->card_type] = array();
-      $this->current_txn_type = "Correction";
+    elseif ($this->currentTag == "Correction") {
+      $this->correctionHash[$this->termId][$this->cardType] = array();
+      $this->currentTxnType = "Correction";
     }
   }
 
@@ -378,11 +385,11 @@ class CommerceMonerisResponse {
    * 	 The name.
    */
   function endHandler($parser, $name) {
-    $this->current_tag = $name;
+    $this->currentTag = $name;
     if ($name == "BankTotals") {
-      $this->is_batch_totals = 0;
+      $this->isBatchTotals = 0;
     }
 
-    $this->current_tag = "/dev/null";
+    $this->currentTag = "/dev/null";
   }
 }
