@@ -13,7 +13,7 @@ class CommerceMoneris {
   private $storeId;
   private $apiToken;
 
-  private $commerce_moneris_response;
+  private $commerceMonerisResponse;
 
   /**
    * Constructor.
@@ -71,8 +71,8 @@ class CommerceMoneris {
    * @param unknown_type $cacert_path
    * 	 The path to cacert.pem in case $ssl is TRUE.
    */
-  public function post($type, $txn_array, $production = TRUE, $ssl = FALSE, $cacert_path = '') {
-    $xml = $this->getXML($type, $txn_array);
+  public function post($type, $txnArray, $production = TRUE, $ssl = FALSE, $cacertPath = '') {
+    $xml = $this->getXML($type, $txnArray);
 
     // Post the xml to Moneris.
     $url = $this->globals['MONERIS_PROTOCOL'] . "://";
@@ -91,7 +91,7 @@ class CommerceMoneris {
     // When ssl is usign, include the cacert.pem .
     if ($ssl) {
       curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
-      curl_setopt($ch, CURLOPT_CAINFO, $cacert_path);
+      curl_setopt($ch, CURLOPT_CAINFO, $cacertPath);
     }
     else {
       curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
@@ -103,10 +103,10 @@ class CommerceMoneris {
     // Check for cURL errors.
     $errorno = curl_errno($ch);
     if ($errorno) {
-      $error_message = curl_error($ch);
+      $errorMessage = curl_error($ch);
 
       $result['error_no'] = $errorno;
-      $result['error_message'] = $error_message;
+      $result['error_message'] = $errorMessage;
     }
 
     curl_close($ch);
@@ -135,7 +135,7 @@ class CommerceMoneris {
     }
 
      // Create the response object.
-     $this->commerce_moneris_response = new CommerceMonerisResponse($response);
+     $this->commerceMonerisResponse = new CommerceMonerisResponse($response);
 
      return $result;
   }
@@ -166,7 +166,7 @@ class CommerceMoneris {
    * Get the moneris response object.
    */
   public function getCommerceMonerisResponse() {
-    return $this->commerce_moneris_response;
+    return $this->commerceMonerisResponse;
   }
 }
 
