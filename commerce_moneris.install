@@ -6,7 +6,7 @@
  */
 
 /**
- * Implementation of hook_uninstall().
+ * Implements hook_uninstall().
  */
 function commerce_moneris_uninstall() {
   variable_del('commerce_moneris_gateway');

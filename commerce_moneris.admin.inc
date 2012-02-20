@@ -22,9 +22,9 @@ function commerce_moneris_admin_settings() {
     '#type' => 'select',
     '#title' => t('Moneris Gateway'),
     '#options' => array(
-        'ca' => t('Canada'),
-        'us' => t('US'),
-      ),
+      'ca' => t('Canada'),
+      'us' => t('US'),
+    ),
     '#default_value' => variable_get('commerce_moneris_gateway', 'ca'),
   );
 

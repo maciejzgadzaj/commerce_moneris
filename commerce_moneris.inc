@@ -19,16 +19,16 @@ class CommerceMoneris {
    * Constructor.
    *
    * @param string $gateway
-   * 	 The gateway used for payment ca/us.
+   *   The gateway used for payment ca/us.
    * @param string $storeId
-   * 	 The storeId.
+   *   The storeId.
    * @param string $apiToken
-   * 	 The apiToken.
+   *   The apiToken.
    */
-  function __construct($gateway, $storeId, $apiToken) {
+  function __construct($gateway, $store_id, $api_token) {
     $this->gateway = $gateway;
-    $this->storeId = $storeId;
-    $this->apiToken = $apiToken;
+    $this->storeId = $store_id;
+    $this->apiToken = $api_token;
 
     switch ($gateway) {
       case 'ca':
@@ -61,18 +61,18 @@ class CommerceMoneris {
    * Post data to Moneris Gateway using cURL library.
    *
    * @param string $type
-   * 	 The type of the transaction.
+   *   The type of the transaction.
    * @param Array $txn_array
-   * 	 Data that will be send to Moneris.
+   *   Data that will be send to Moneris.
    * @param Boolean $production
-   * 	 Flag indicating if the request goes to Moneris production or sandbox.
+   *   Flag indicating if the request goes to Moneris production or sandbox.
    * @param Boolean $ssl
-   * 	 Flag indicating if we are using SSL connection.
+   *   Flag indicating if we are using SSL connection.
    * @param unknown_type $cacert_path
-   * 	 The path to cacert.pem in case $ssl is TRUE.
+   *   The path to cacert.pem in case $ssl is TRUE.
    */
-  public function post($type, $txnArray, $production = TRUE, $ssl = FALSE, $cacertPath = '') {
-    $xml = $this->getXML($type, $txnArray);
+  public function post($type, $txn_array, $production = TRUE, $ssl = FALSE, $cacert_path = '') {
+    $xml = $this->getXML($type, $txn_array);
 
     // Post the xml to Moneris.
     $url = $this->globals['MONERIS_PROTOCOL'] . "://";
@@ -91,7 +91,7 @@ class CommerceMoneris {
     // When ssl is usign, include the cacert.pem .
     if ($ssl) {
       curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
-      curl_setopt($ch, CURLOPT_CAINFO, $cacertPath);
+      curl_setopt($ch, CURLOPT_CAINFO, $cacert_path);
     }
     else {
       curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
@@ -103,17 +103,15 @@ class CommerceMoneris {
     // Check for cURL errors.
     $errorno = curl_errno($ch);
     if ($errorno) {
-      $errorMessage = curl_error($ch);
-
-      $result['error_no'] = $errorno;
-      $result['error_message'] = $errorMessage;
+      $result['error_no'] = $errorno;      
+      $result['error_message'] = curl_error($ch);            
     }
 
     curl_close($ch);
 
     if (!$response && !$errorno) {
        $response = "<?xml version=\"1.0\"?>
-       			<response><receipt>  
+	    <response><receipt>  
               <receiptid>Global Error Receipt</receiptid> 
               <referencenum>null</referencenum>
               <responsecode>null</responsecode> 
@@ -128,7 +126,7 @@ class CommerceMoneris {
               <cardType>null</cardType> 
               <transid>null</transid>
               <timedout>null</timedout> 
-            </receipt></response>";      
+            </receipt></response>";
       
        $result['error_no'] = 1;
        $result['error_message'] = 'Global Error Receipt';
@@ -146,17 +144,17 @@ class CommerceMoneris {
    * @param String $type
    *   The type of the transaction.
    * @param Array $txn_array
-   * 	 Data that will be send to Moneris.
+   *   Data that will be send to Moneris.
    */
-  private function getXML($type, $txnArray) {
-    $request = new CommerceMonerisRequest($this->gateway, $txnArray);
-    $requestXml = $request->generateXml($type);
+  private function getXML($type, $txn_array) {
+    $request = new CommerceMonerisRequest($this->gateway, $txn_array);
+    $request_xml = $request->generateXml($type);
 
     $xml = "<?xml version=\"1.0\" encoding=\"iso-8859-1\"?> 
             <request> 
             <store_id>$this->storeId</store_id>  
             <api_token>$this->apiToken</api_token> 
-              $requestXml 
+              $request_xml 
             </request>";
 
     return $xml;
@@ -182,26 +180,26 @@ class CommerceMonerisRequest {
    * Constructor of Moneris Request.
    *
    * @param string $gateway
-   * 	Gateway that will be used: ca/us
+   *   Gateway that will be used: ca/us
    * @param Array $txn_array
-   * 	Data that will be send to Moneris
+   *   Data that will be send to Moneris
    */
-  function __construct($gateway, $txnArray) {
+  function __construct($gateway, $txn_array) {
     switch ($gateway) {
       case 'ca':
         $this->txnTypes = array(
-					'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
+	  'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
         );
         break;
 
       case 'us':
         $this->txnTypes = array(
-  				'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
+	  'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
         );
         break;
     }
 
-    $this->txnArray = $txnArray;
+    $this->txnArray = $txn_array;
   }
 
   /**
@@ -291,32 +289,32 @@ class CommerceMonerisResponse {
    * Custom function used for parsing.
    *
    * @param Object $parser
-   * 	 The parser.
+   *   The parser.
    * @param Object $data
-   * 	 The data.
+   *   The data.
    */
   function characterHandler($parser, $data) {
    if ($this->isBatchTotals) {
      switch ($this->currentTag) {
-       case "term_id"    :
+       case "term_id":
          $this->termId = $data;
          array_push($this->ecrs, $this->termId);
          $this->card_hash[$data] = array();
          break;
 
-      case "closed"     :
+      case "closed":
         $ecrHash = $this->ecrHash;
         $ecrHash[$this->termId] = $data;
         $this->ecrHash = $ecrHash;
         break;
 
-      case "card_type"   :
+      case "card_type":
         $this->cardType = $data;
         $this->cards[$data] = $data;
         array_push($this->card_hash[$this->termId], $data);
         break;
 
-      case "amount"     :
+      case "amount":
         if ($this->currentTxnType == "Purchase") {
            $this->purchaseHash[$this->termId][$this->cardType]['Amount'] = $data;
         }
@@ -350,11 +348,11 @@ class CommerceMonerisResponse {
    * Custom function used for parser.
    *
    * @param Object $parser
-   * 	 The parser.
+   *   The parser.
    * @param String $name
-   * 	 The name.
+   *   The name.
    * @param Array $attrs
-   * 	 The attributes.
+   *   The attributes.
    */
   function startHandler($parser, $name, $attrs) {
     $this->currentTag = $name;
@@ -380,9 +378,9 @@ class CommerceMonerisResponse {
    * Custom function used for parser.
    *
    * @param Object $parser
-   * 	 The parser.
+   *   The parser.
    * @param String $name
-   * 	 The name.
+   *   The name.
    */
   function endHandler($parser, $name) {
     $this->currentTag = $name;
