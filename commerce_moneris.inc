@@ -25,7 +25,7 @@ class CommerceMoneris {
    * @param string $api_token
    * 	 The api_token.
    */
-  function CommerceMoneris($gateway, $store_id, $api_token) {
+  function __construct($gateway, $store_id, $api_token) {
     $this->gateway = $gateway;
     $this->store_id = $store_id;
     $this->api_token = $api_token;
@@ -179,7 +179,7 @@ class CommerceMonerisRequest {
    * @param Array $txn_array
    * 	Data that will be send to Moneris
    */
-  function CommerceMonerisRequest($gateway, $txn_array) {
+  function __construct($gateway, $txn_array) {
     switch ($gateway) {
       case 'ca':
         $this->txn_types = array(
@@ -248,7 +248,7 @@ class CommerceMonerisResponse {
    * @param string $xml_string
    *   The xml string returned by Moneris.
    */
-  function CommerceMonerisResponse($xml_string) {
+  function __construct($xml_string) {
     $this->p = xml_parser_create();
     xml_parser_set_option($this->p, XML_OPTION_CASE_FOLDING, 0);
     xml_parser_set_option($this->p, XML_OPTION_TARGET_ENCODING, "UTF-8");
