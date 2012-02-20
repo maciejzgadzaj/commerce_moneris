@@ -300,19 +300,19 @@ class CommerceMonerisResponse {
           $this->termId = $data;
           array_push($this->ecrs, $this->termId);
           $this->cardHash[$data] = array();
-        break;
+          break;
 
         case "closed":
           $ecr_hash = $this->ecrHash;
           $ecr_hash[$this->termId] = $data;
           $this->ecrHash = $ecr_hash;
-        break;
+          break;
 
         case "card_type":
           $this->cardType = $data;
           $this->cards[$data] = $data;
           array_push($this->cardHash[$this->termId], $data);
-        break;
+          break;
 
         case "amount":
           if ($this->currentTxnType == "Purchase") {
@@ -324,7 +324,7 @@ class CommerceMonerisResponse {
           elseif ($this->currentTxnType == "Correction") {
             $this->correctionHash[$this->termId][$this->cardType]['Amount'] = $data;
           }
-        break;
+          break;
 
         case "count":
           if ($this->currentTxnType == "Purchase") {
@@ -336,7 +336,7 @@ class CommerceMonerisResponse {
           elseif ($this->currentTxnType == "Correction") {
             $this->correctionHash[$this->termId][$this->cardType]['Count'] = $data;
           }
-        break;
+          break;
       }
     }
     else {
