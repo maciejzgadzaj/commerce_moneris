@@ -20,9 +20,9 @@ class CommerceMoneris {
    *
    * @param string $gateway
    *   The gateway used for payment ca/us.
-   * @param string $storeId
+   * @param string $store_did
    *   The storeId.
-   * @param string $apiToken
+   * @param string $api_token
    *   The apiToken.
    */
   function __construct($gateway, $store_id, $api_token) {
@@ -103,8 +103,8 @@ class CommerceMoneris {
     // Check for cURL errors.
     $errorno = curl_errno($ch);
     if ($errorno) {
-      $result['error_no'] = $errorno;      
-      $result['error_message'] = curl_error($ch);            
+      $result['error_no'] = $errorno;
+      $result['error_message'] = curl_error($ch);
     }
 
     curl_close($ch);
@@ -127,7 +127,7 @@ class CommerceMoneris {
               <transid>null</transid>
               <timedout>null</timedout> 
             </receipt></response>";
-      
+
        $result['error_no'] = 1;
        $result['error_message'] = 'Global Error Receipt';
     }
@@ -146,7 +146,7 @@ class CommerceMoneris {
    * @param Array $txn_array
    *   Data that will be send to Moneris.
    */
-  private function getXML($type, $txn_array) {
+  protected function getXML($type, $txn_array) {
     $request = new CommerceMonerisRequest($this->gateway, $txn_array);
     $request_xml = $request->generateXml($type);
 
@@ -188,13 +188,13 @@ class CommerceMonerisRequest {
     switch ($gateway) {
       case 'ca':
         $this->txnTypes = array(
-	  'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
+          'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
         );
         break;
 
       case 'us':
         $this->txnTypes = array(
-	  'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
+          'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
         );
         break;
     }
@@ -206,7 +206,7 @@ class CommerceMonerisRequest {
    * Generate the xml for Moneris.
    *
    * @param String $type
-   * 	 Type of transaction.
+   *   Type of transaction.
    */
   function generateXml($type) {
     $xml = "<$type>";
@@ -303,9 +303,9 @@ class CommerceMonerisResponse {
          break;
 
       case "closed":
-        $ecrHash = $this->ecrHash;
-        $ecrHash[$this->termId] = $data;
-        $this->ecrHash = $ecrHash;
+        $ecr_hash = $this->ecrHash;
+        $ecr_hash[$this->termId] = $data;
+        $this->ecrHash = $ecr_hash;
         break;
 
       case "card_type":
@@ -326,7 +326,7 @@ class CommerceMonerisResponse {
         }
         break;
 
-      case "count"     :
+      case "count":
         if ($this->currentTxnType == "Purchase") {
            $this->purchaseHash[$this->termId][$this->cardType]['Count'] = $data;
         }
