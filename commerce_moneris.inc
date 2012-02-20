@@ -243,7 +243,7 @@ class CommerceMonerisResponse {
   private $currentTxnType;
   private $ecrs = array();
   private $cards = array();
-  private $card_hash = array();
+  private $cardHash = array();
 
   private $acsUrl;
 
@@ -296,47 +296,47 @@ class CommerceMonerisResponse {
   function characterHandler($parser, $data) {
     if ($this->isBatchTotals) {
       switch ($this->currentTag) {
-	case "term_id":
-	  $this->termId = $data;
-	  array_push($this->ecrs, $this->termId);
-	  $this->card_hash[$data] = array();
-	break;
+        case "term_id":
+          $this->termId = $data;
+          array_push($this->ecrs, $this->termId);
+          $this->cardHash[$data] = array();
+        break;
 
-	case "closed":
-	  $ecr_hash = $this->ecrHash;
-	  $ecr_hash[$this->termId] = $data;
-	  $this->ecrHash = $ecr_hash;
-	break;
+        case "closed":
+          $ecr_hash = $this->ecrHash;
+          $ecr_hash[$this->termId] = $data;
+          $this->ecrHash = $ecr_hash;
+        break;
 
-	case "card_type":
-	  $this->cardType = $data;
-	  $this->cards[$data] = $data;
-	  array_push($this->card_hash[$this->termId], $data);
-	break;
+        case "card_type":
+          $this->cardType = $data;
+          $this->cards[$data] = $data;
+          array_push($this->cardHash[$this->termId], $data);
+        break;
 
-	case "amount":
-	if ($this->currentTxnType == "Purchase") {
-	  $this->purchaseHash[$this->termId][$this->cardType]['Amount'] = $data;
-	}
-	elseif ($this->currentTxnType == "Refund") {
-	$this->refundHash[$this->termId][$this->cardType]['Amount'] = $data;
-	}
-	elseif ($this->currentTxnType == "Correction") {
-	  $this->correctionHash[$this->termId][$this->cardType]['Amount'] = $data;
-	}
-	break;
+        case "amount":
+          if ($this->currentTxnType == "Purchase") {
+            $this->purchaseHash[$this->termId][$this->cardType]['Amount'] = $data;
+          }
+          elseif ($this->currentTxnType == "Refund") {
+            $this->refundHash[$this->termId][$this->cardType]['Amount'] = $data;
+          }
+          elseif ($this->currentTxnType == "Correction") {
+            $this->correctionHash[$this->termId][$this->cardType]['Amount'] = $data;
+          }
+        break;
 
-	case "count":
-	if ($this->currentTxnType == "Purchase") {
-	  $this->purchaseHash[$this->termId][$this->cardType]['Count'] = $data;
-	}
-	elseif ($this->currentTxnType == "Refund") {
-	  $this->refundHash[$this->termId][$this->cardType]['Count'] = $data;
-	}
-	elseif ($this->currentTxnType == "Correction") {
-	  $this->correctionHash[$this->termId][$this->cardType]['Count'] = $data;
-	}
-	break;
+        case "count":
+          if ($this->currentTxnType == "Purchase") {
+            $this->purchaseHash[$this->termId][$this->cardType]['Count'] = $data;
+          }
+          elseif ($this->currentTxnType == "Refund") {
+            $this->refundHash[$this->termId][$this->cardType]['Count'] = $data;
+          }
+          elseif ($this->currentTxnType == "Correction") {
+            $this->correctionHash[$this->termId][$this->cardType]['Count'] = $data;
+          }
+        break;
       }
     }
     else {
