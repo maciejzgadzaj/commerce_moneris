@@ -2,7 +2,6 @@
 /**
  * @file
  * Provides moneris payment method for Drupal Commerce.
- *
  */
 
 /**
@@ -168,8 +167,8 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
 
   $commerce_moneris = new CommerceMoneris($gateway, $store_id, $api_token);
 
-  $production = variable_get('commerce_moneris_production', 1);
-  $ssl = variable_get('commerce_moneris_ssl', 0);
+  $production = variable_get('commerce_moneris_production', TRUE);
+  $ssl = variable_get('commerce_moneris_ssl', FALSE);
 
   if ($ssl) {
     $cacert_path = variable_get('commerce_moneris_curl_certificate_path', '');
@@ -180,7 +179,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   }
 
   // If the request failed, display an erorr and log it.
-  if ($result['error_no']) {
+  if (isset($result['error_no'])) {
     watchdog('commerce_moneris', 'Error with cURL request: (!error_no). Message: !error_message',
       array(
         '!error_no' => $result['error_no'],
@@ -194,9 +193,10 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
 
   // Get the response object.
   $commerce_moneris_response = $commerce_moneris->getCommerceMonerisResponse();
-
+  $responseData = $commerce_moneris_response->getResponseData();
+  
   watchdog('commerce_moneris', 'Moneris transaction response: !param',
-            array('!param' => '<pre>' . check_plain(print_r($commerce_moneris_response->getResponseData(), TRUE)) . '</pre>'));
+            array('!param' => '<pre>' . check_plain(print_r($responseData, TRUE)) . '</pre>'));
 
   $transaction->message = 'Moneris ResponseCode: @responsecode <br />
   												 Moneris ResponseMessage: @message';
@@ -204,9 +204,9 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
     '@responsecode' => $commerce_moneris_response->getResponseCode(),
     '@message' => $commerce_moneris_response->getMessage(),
   );
-
+    
   // Set the RemoteID as Moneris TransID.
-  $transaction->remote_id = $commerce_moneris_response->response_data['TransID'];
+  $transaction->remote_id = $responseData['TransID'];
 
   $response_code = $commerce_moneris_response->getResponseCode();
 

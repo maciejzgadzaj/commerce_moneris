@@ -3,17 +3,16 @@
 /**
  * @file
  * Class that will handle the Moneris Payment.
- *
  */
 
 class CommerceMoneris {
-  private $globals;
+  protected $globals;
 
-  private $gateway;
-  private $storeId;
-  private $apiToken;
+  protected $gateway;
+  protected $storeId;
+  protected $apiToken;
 
-  private $commerceMonerisResponse;
+  protected $commerceMonerisResponse;
 
   /**
    * Constructor.
@@ -68,7 +67,7 @@ class CommerceMoneris {
    *   Flag indicating if the request goes to Moneris production or sandbox.
    * @param Boolean $ssl
    *   Flag indicating if we are using SSL connection.
-   * @param unknown_type $cacert_path
+   * @param $cacert_path
    *   The path to cacert.pem in case $ssl is TRUE.
    */
   public function post($type, $txn_array, $production = TRUE, $ssl = FALSE, $cacert_path = '') {
@@ -99,7 +98,8 @@ class CommerceMoneris {
 
     $response = curl_exec($ch);
 
-    $result = NULL;
+    $result = array();
+    
     // Check for cURL errors.
     $errorno = curl_errno($ch);
     if ($errorno) {
@@ -173,8 +173,8 @@ class CommerceMoneris {
  * @author ionut
  */
 class CommerceMonerisRequest {
-  private $txnTypes;
-  private $txnArray;
+  protected $txnTypes;
+  protected $txnArray;
 
   /**
    * Constructor of Moneris Request.
@@ -188,13 +188,34 @@ class CommerceMonerisRequest {
     switch ($gateway) {
       case 'ca':
         $this->txnTypes = array(
-          'purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'cvd_indicator', 'cvd_value'),
+          'purchase' => array(
+            'order_id', 
+	    'cust_id', 
+            'amount', 
+            'pan', 
+            'expdate', 
+            'crypt_type', 
+            'cvd_indicator', 
+            'cvd_value'
+          ),
         );
         break;
 
       case 'us':
         $this->txnTypes = array(
-          'us_purchase' => array('order_id', 'cust_id', 'amount', 'pan', 'expdate', 'crypt_type', 'commcard_invoice', 'commcard_tax_amount', 'dynamic_descriptor', 'cvd_indicator', 'cvd_value'),
+          'us_purchase' => array(
+            'order_id', 
+            'cust_id', 
+            'amount', 
+            'pan', 
+            'expdate', 
+            'crypt_type', 
+            'commcard_invoice', 
+            'commcard_tax_amount', 
+            'dynamic_descriptor', 
+            'cvd_indicator', 
+            'cvd_value'
+          ),
         );
         break;
     }
@@ -208,7 +229,7 @@ class CommerceMonerisRequest {
    * @param String $type
    *   Type of transaction.
    */
-  function generateXml($type) {
+  public function generateXml($type) {
     $xml = "<$type>";
     foreach ($this->txnTypes[$type] as $t) {
       if ($this->txnArray[$t]) {
@@ -227,25 +248,25 @@ class CommerceMonerisRequest {
  * @author ionut
  */
 class CommerceMonerisResponse {
-  private $responseData;
+  protected $responseData;
 
-  private $p;
+  protected $p;
 
-  private $currentTag;
-  private $purchaseHash = array();
-  private $refundHash;
-  private $correctionHash = array();
-  private $isBatchTotals;
-  private $termId;
-  private $receiptHash = array();
-  private $ecrHash = array();
-  private $cardType;
-  private $currentTxnType;
-  private $ecrs = array();
-  private $cards = array();
-  private $cardHash = array();
+  protected $currentTag;
+  protected $purchaseHash = array();
+  protected $refundHash;
+  protected $correctionHash = array();
+  protected $isBatchTotals;
+  protected $termId;
+  protected $receiptHash = array();
+  protected $ecrHash = array();
+  protected $cardType;
+  protected $currentTxnType;
+  protected $ecrs = array();
+  protected $cards = array();
+  protected $cardHash = array();
 
-  private $acsUrl;
+  protected $acsUrl;
 
   /**
    * Constructor of CommerceMonerisResponse.
@@ -274,14 +295,14 @@ class CommerceMonerisResponse {
   /**
    * Returns the respone code.
    */
-  function getResponseCode() {
+  public function getResponseCode() {
     return $this->responseData['ResponseCode'];
   }
 
   /**
    * Returns the response message.
    */
-  function getMessage() {
+  public function getMessage() {
     return $this->responseData['Message'];
   }
 
@@ -293,7 +314,7 @@ class CommerceMonerisResponse {
    * @param Object $data
    *   The data.
    */
-  function characterHandler($parser, $data) {
+  protected function characterHandler($parser, $data) {
     if ($this->isBatchTotals) {
       switch ($this->currentTag) {
         case "term_id":
@@ -354,7 +375,7 @@ class CommerceMonerisResponse {
    * @param Array $attrs
    *   The attributes.
    */
-  function startHandler($parser, $name, $attrs) {
+  protected function startHandler($parser, $name, $attrs) {
     $this->currentTag = $name;
 
     if ($this->currentTag == "BankTotals") {
@@ -382,7 +403,7 @@ class CommerceMonerisResponse {
    * @param String $name
    *   The name.
    */
-  function endHandler($parser, $name) {
+  protected function endHandler($parser, $name) {
     $this->currentTag = $name;
     if ($name == "BankTotals") {
       $this->isBatchTotals = 0;
