@@ -191,7 +191,7 @@ class CommerceMonerisRequest {
           'purchase' => array(
             'order_id',
             'cust_id',
-            'amount', 
+            'amount',
             'pan',
             'expdate',
             'crypt_type',
