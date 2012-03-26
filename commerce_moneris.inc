@@ -67,7 +67,7 @@ class CommerceMoneris {
    *   Flag indicating if the request goes to Moneris production or sandbox.
    * @param Boolean $ssl
    *   Flag indicating if we are using SSL connection.
-   * @param $cacert_path
+   * @param string $cacert_path
    *   The path to cacert.pem in case $ssl is TRUE.
    */
   public function post($type, $txn_array, $production = TRUE, $ssl = FALSE, $cacert_path = '') {
@@ -99,7 +99,7 @@ class CommerceMoneris {
     $response = curl_exec($ch);
 
     $result = array();
-    
+
     // Check for cURL errors.
     $errorno = curl_errno($ch);
     if ($errorno) {
@@ -189,14 +189,14 @@ class CommerceMonerisRequest {
       case 'ca':
         $this->txnTypes = array(
           'purchase' => array(
-            'order_id', 
-	    'cust_id', 
+            'order_id',
+            'cust_id',
             'amount', 
-            'pan', 
-            'expdate', 
-            'crypt_type', 
-            'cvd_indicator', 
-            'cvd_value'
+            'pan',
+            'expdate',
+            'crypt_type',
+            'cvd_indicator',
+            'cvd_value',
           ),
         );
         break;
@@ -204,17 +204,17 @@ class CommerceMonerisRequest {
       case 'us':
         $this->txnTypes = array(
           'us_purchase' => array(
-            'order_id', 
-            'cust_id', 
-            'amount', 
-            'pan', 
-            'expdate', 
-            'crypt_type', 
-            'commcard_invoice', 
-            'commcard_tax_amount', 
-            'dynamic_descriptor', 
-            'cvd_indicator', 
-            'cvd_value'
+            'order_id',
+            'cust_id',
+            'amount',
+            'pan',
+            'expdate',
+            'crypt_type',
+            'commcard_invoice',
+            'commcard_tax_amount',
+            'dynamic_descriptor',
+            'cvd_indicator',
+            'cvd_value',
           ),
         );
         break;

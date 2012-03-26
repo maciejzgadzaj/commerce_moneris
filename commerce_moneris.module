@@ -193,10 +193,10 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
 
   // Get the response object.
   $commerce_moneris_response = $commerce_moneris->getCommerceMonerisResponse();
-  $responseData = $commerce_moneris_response->getResponseData();
-  
+  $response_data = $commerce_moneris_response->getResponseData();
+
   watchdog('commerce_moneris', 'Moneris transaction response: !param',
-            array('!param' => '<pre>' . check_plain(print_r($responseData, TRUE)) . '</pre>'));
+            array('!param' => '<pre>' . check_plain(print_r($response_data, TRUE)) . '</pre>'));
 
   $transaction->message = 'Moneris ResponseCode: @responsecode <br />
   												 Moneris ResponseMessage: @message';
@@ -204,9 +204,9 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
     '@responsecode' => $commerce_moneris_response->getResponseCode(),
     '@message' => $commerce_moneris_response->getMessage(),
   );
-    
+
   // Set the RemoteID as Moneris TransID.
-  $transaction->remote_id = $responseData['TransID'];
+  $transaction->remote_id = $response_data['TransID'];
 
   $response_code = $commerce_moneris_response->getResponseCode();
 
