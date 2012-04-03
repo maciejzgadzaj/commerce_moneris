@@ -41,7 +41,7 @@ function commerce_moneris_commerce_payment_method_info() {
   $payment_methods = array();
 
   $payment_methods['commerce_moneris'] = array(
-    'title' => t('Moneris'),
+    'title' => variable_get('commerce_moneris_title', 'Moneris'),
     'description' => t('Moneris Payment'),
     'active' => TRUE,
   );

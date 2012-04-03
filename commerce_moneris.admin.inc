@@ -18,6 +18,13 @@ function commerce_moneris_admin_settings() {
     '#collapsed' => FALSE,
   );
 
+  $form['commerce_moneris']['commerce_moneris_title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Title'),
+    '#default_value' => variable_get('commerce_moneris_title', 'Moneris'),
+    '#description' => t('Override the default title of the commerce cheque payment method.'),
+  );  
+  
   $form['commerce_moneris']['commerce_moneris_gateway'] = array(
     '#type' => 'select',
     '#title' => t('Moneris Gateway'),

@@ -8,6 +8,7 @@
  * Implements hook_uninstall().
  */
 function commerce_moneris_uninstall() {
+  variable_del('commerce_moneris_title');  
   variable_del('commerce_moneris_gateway');
   variable_del('commerce_moneris_production');
   variable_del('commerce_moneris_store_id');
