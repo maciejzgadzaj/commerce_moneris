@@ -15,4 +15,5 @@ function commerce_moneris_uninstall() {
   variable_del('commerce_moneris_apitoken');
   variable_del('commerce_moneris_ssl');
   variable_del('commerce_moneris_curl_certificate_path');
+  variable_del('commerce_moneris_display_response');
 }

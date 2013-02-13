@@ -42,7 +42,14 @@ function commerce_moneris_admin_settings() {
       0 => t('Moneris Sandbox'),
       1 => t('Moneris Production'),
     ),
-    '#default_value' => variable_get('commerce_moneris_production'),
+    '#default_value' => variable_get('commerce_moneris_production', 0),
+  );
+
+  $form['commerce_moneris']['commerce_moneris_display_response'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display response messages'),
+    '#description' => t('Display transaction response messages from Moneris when a payment fails. These messages are useful for debugging but you may want to hide them in production.'),
+    '#default_value' => variable_get('commerce_moneris_display_response', 1),
   );
 
   $form['commerce_moneris']['commerce_moneris_store_id'] = array(

@@ -230,9 +230,11 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
 
   // If the payment failed, display an error.
   if (!$payment_approved) {
-    $msg = t('We received the following error processing your card. Please enter your information again or try a different card.');
-    drupal_set_message($msg, 'error');
-    drupal_set_message(check_plain($commerce_moneris_response->getMessage()), 'error');
+    drupal_set_message(t('We were unable to process your payment. Please enter your information again or try a different card.'), 'error');
+
+    if (variable_get('commerce_moneris_display_response', 1)) {
+      drupal_set_message(check_plain($commerce_moneris_response->getMessage()), 'error');
+    }
 
     return FALSE;
   }
