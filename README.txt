@@ -64,7 +64,15 @@ to alter the values that are sent to Moneris.
 You can use this to override the order_id or customer_id.
 
 
-4. When you are using SSL, then you need to download the cacert.pem 
+4. When you are using SSL, you need to download the cacert.pem 
 and upload it to your server (if it is not already there).
 On the configuration page, you have to set the path to that file.
 This is used for cURL to make SSL requests to Moneris. 
+
+
+5. Moneris HPP - Hosted Paypage
+This is a different Pyament and needs to be configured accordingly.
+You will need a hpp_id and hpp_key from Moneris.
+
+You also have to configure your store to do a POST to:
+http://yoursite/commerce-moneris-hpp/callback

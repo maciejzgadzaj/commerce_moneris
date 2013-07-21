@@ -4,6 +4,17 @@
  * Provides moneris payment method for Drupal Commerce.
  */
 
+define('COMMERCE_MONERIS_HPP_CANADA', 'ca');
+define('COMMERCE_MONERIS_HPP_USA', 'us');
+
+// CANADA
+define('COMMERCE_MONERIS_HPP_PRODUCTION', 'https://www3.moneris.com/HPPDP/index.php');
+define('COMMERCE_MONERIS_HPP_SANDBOX', 'https://esqa.moneris.com/HPPDP/index.php');
+
+// US
+define('COMMERCE_MONERIS_HPP_PRODUCTION_US', 'https://esplus.moneris.com/DPHPP/index.php');
+define('COMMERCE_MONERIS_HPP_SANDBOX_US', 'https://esplusqa.moneris.com/DPHPP/index.php');
+
 /**
  * Implements hook_permission().
  */
@@ -31,6 +42,13 @@ function commerce_moneris_menu() {
     'file' => 'commerce_moneris.admin.inc',
   );
 
+  $items['commerce-moneris-hpp/callback'] = array(
+    'title' => 'Moneris HPP Callback',
+    'page callback' => 'commerce_moneris_hpp_callback_page',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
   return $items;
 }
 
@@ -44,6 +62,14 @@ function commerce_moneris_commerce_payment_method_info() {
     'title' => variable_get('commerce_moneris_title', 'Moneris'),
     'description' => t('Moneris Payment'),
     'active' => TRUE,
+  );
+
+  $payment_methods['commerce_moneris_hpp'] = array(
+    'title' => variable_get('commerce_moneris_hpp_title', 'Moneris HPP'),
+    'description' => t('Moneris Hosted Pay Page Payment'),
+    'active' => TRUE,
+    'offsite' => TRUE,
+    'offsite_autoredirect' => TRUE,
   );
 
   return $payment_methods;
@@ -198,8 +224,7 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   watchdog('commerce_moneris', 'Moneris transaction response: !param',
             array('!param' => '<pre>' . check_plain(print_r($response_data, TRUE)) . '</pre>'));
 
-  $transaction->message = 'Moneris ResponseCode: @responsecode <br />
-  												 Moneris ResponseMessage: @message';
+  $transaction->message = 'Moneris ResponseCode: @responsecode <br />Moneris ResponseMessage: @message';
   $transaction->message_variables = array(
     '@responsecode' => $commerce_moneris_response->getResponseCode(),
     '@message' => $commerce_moneris_response->getMessage(),
@@ -240,4 +265,223 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
   }
 
   return TRUE;
+}
+
+/**
+ * Moneris HPP settings form.
+ */
+function commerce_moneris_hpp_settings_form($settings = array()) {
+  $form = array();
+  $hpp = $settings['commerce_moneris_hpp'];
+
+  $form['commerce_moneris_hpp']['commerce_moneris_hpp_gateway'] = array(
+    '#type' => 'select',
+    '#title' => t('Moneris Gateway'),
+    '#options' => array(
+      'ca' => t('Canada'),
+      'us' => t('US'),
+    ),
+    '#default_value' => isset($hpp['commerce_moneris_hpp_gateway']) ? $hpp['commerce_moneris_hpp_gateway'] : '',
+  );
+
+  $form['commerce_moneris_hpp']['commerce_moneris_hpp_server'] = array(
+    '#type' => 'radios',
+    '#title' => t('Moneris Server'),
+    '#options' => array(
+        0 => t('Moneris Sandbox'),
+        1 => t('Moneris Production'),
+    ),
+    '#default_value' => isset($hpp['commerce_moneris_hpp_server']) ? $hpp['commerce_moneris_hpp_server'] : 0,
+  );
+
+  $form['commerce_moneris_hpp']['commerce_moneris_hpp_ps_store_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('PS Store ID'),
+    '#default_value' => isset($hpp['commerce_moneris_hpp_ps_store_id']) ? $hpp['commerce_moneris_hpp_ps_store_id'] : '',
+    '#required' => TRUE,
+  );
+
+  $form['commerce_moneris_hpp']['commerce_moneris_hpp_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('HPP Key'),
+    '#default_value' => isset($hpp['commerce_moneris_hpp_key']) ? $hpp['commerce_moneris_hpp_key'] : '',
+    '#required' => TRUE,
+  );
+
+  $form['commerce_moneris_hpp']['commerce_moneris_hpp_title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Title'),
+    '#default_value' => isset($hpp['commerce_moneris_hpp_title']) ? $hpp['commerce_moneris_hpp_title'] : t('Moneris HPP'),
+    '#description' => t('Override the default title of the commerce moneris payment method.'),
+  );
+
+  return $form;
+}
+
+/**
+ * Moneris HPP redirect form.
+ */
+function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $payment_method) {
+  $form = array();
+
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $amount = $wrapper->commerce_order_total->amount->value();
+
+  $settings = $payment_method['settings']['commerce_moneris_hpp'];
+  $gateway = $settings['commerce_moneris_hpp_gateway'];
+
+  // Data that will be sent to Moneris HPP.
+  // CANADA
+  if ($gateway == COMMERCE_MONERIS_HPP_CANADA) {
+    $data = array(
+      // Mandatory Fields.
+      'ps_store_id' => $settings['commerce_moneris_hpp_ps_store_id'],
+      'hpp_key' => $settings['commerce_moneris_hpp_key'],
+      'charge_total' => number_format($amount / 100, 2),
+  
+      // Optional fields.
+      'cust_id' => $order->uid,
+      'order_id' => commerce_moneris_hpp_invoice_id($order),
+      'mail' => $order->mail,
+    );
+  }
+  else {
+    // US
+    $data = array(
+      // Mandatory Fields.
+      'hpp_id' => $settings['commerce_moneris_hpp_ps_store_id'],
+      'hpp_key' => $settings['commerce_moneris_hpp_key'],
+      'amount' => number_format($amount / 100, 2),
+  
+      // Optional fields.
+      'cust_id' => $order->uid,
+      'order_no' => commerce_moneris_hpp_invoice_id($order),
+      'client_email' => $order->mail,
+    );
+  }
+
+  // Allow other modules to alter the $data.
+  drupal_alter('commerce_moneris_hpp_data', $data);
+
+  foreach ($data as $name => $value) {
+    if (!empty($value)) {
+      $form[$name] = array('#type' => 'hidden', '#value' => $value);
+    }
+  }
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => $settings['commerce_moneris_hpp_title'],
+  );
+
+  $form['#action'] = commerce_moneris_hpp_server_url($settings);
+
+  return $form;
+}
+
+/**
+ * Returns a unique invoice number based on the Order ID and timestamp.
+ */
+function commerce_moneris_hpp_invoice_id($order) {
+  return $order->order_id . '-' . REQUEST_TIME;
+}
+
+/**
+ * Get the Moneris HPP server URL.
+ */
+function commerce_moneris_hpp_server_url($settings) {
+  $server = $settings['commerce_moneris_hpp_server'];
+  $gateway = $settings['commerce_moneris_hpp_gateway'];
+
+  if ($gateway == COMMERCE_MONERIS_HPP_CANADA) {
+    if ($server) {
+      return COMMERCE_MONERIS_HPP_PRODUCTION;
+    }
+    return COMMERCE_MONERIS_HPP_SANDBOX;
+  }
+  else {
+    if ($server) {
+      return COMMERCE_MONERIS_HPP_PRODUCTION_US;
+    }
+    return COMMERCE_MONERIS_HPP_SANDBOX_US;
+  }
+}
+
+/**
+ * Callback page for Moneris.
+ */
+function commerce_moneris_hpp_callback_page() {
+  $payment_method = commerce_payment_method_instance_load('commerce_moneris_hpp|commerce_payment_commerce_moneris_hpp');
+  $settings = $payment_method['settings']['commerce_moneris_hpp'];
+  $gateway = $payment_method['settings']['commerce_moneris_hpp']['commerce_moneris_hpp_gateway'];
+
+  if ($gateway == COMMERCE_MONERIS_HPP_CANADA) {
+    if (!isset($_POST['response_order_id'])) {
+      drupal_not_found();
+      return;
+    }
+
+    // Fields for CA Moneris.
+    $transaction_id = $_POST['bank_transaction_id'];
+    $amount = $_POST['charge_total'];
+    $order_id = $_POST['response_order_id'];
+  }
+  else {
+    if (!isset($_POST['order_no'])) {
+      drupal_not_found();
+      return;
+    }
+
+    // Fields for US Moneris.
+    $transaction_id = $_POST['ref_num'];
+    $amount = $_POST['amount'];
+    $order_id = $_POST['order_no'];
+  }
+
+  $order = commerce_order_load($order_id);
+  if (! $order) {
+    watchdog('commerce_moneris_hpp', t('Invalid order ID: ') . $order_id, WATCHDOG_ERROR);
+    drupal_set_message(t('There was an error with your request. Please contact the site administrator.'), 'error');
+  }
+
+  // Create a commerce payment transaction.
+  $transaction = commerce_payment_transaction_new('commerce_moneris_hpp', $order->order_id);
+  $transaction->remote_id = $transaction_id;
+  $transaction->amount = $amount * 100;
+  $transaction->message = 'Moneris ResponseCode: @responsecode <br />Moneris ResponseMessage: @message';
+  $transaction->message_variables = array(
+    '@responsecode' => $_POST['response_code'],
+    '@message' => print_r($_POST, 1),
+  );
+  $response_code = intval($_POST['response_code']);
+
+  $response_code = intval($response_code);
+  if ((0 <= $response_code) && ($response_code <= 49)) {
+    $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+    $payment_approved = TRUE;
+  }
+  else {
+    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+    $payment_approved = FALSE;
+  }
+
+  // Save the payment transaction.
+  commerce_payment_transaction_save($transaction);
+
+  if ($payment_approved) {
+    drupal_set_message(t('Payment succesfully.'));
+
+    // Complete the order.
+    $order = commerce_order_status_update($order, 'completed');
+    commerce_checkout_complete($order);
+    drupal_goto('checkout/' . $order->order_id . '/complete');
+  }
+  else {
+    // If the payment failed, display an error meesage.
+    drupal_set_message(t('We were unable to process your payment. Please enter your information again or try a different card.'), 'error');
+
+    // Set the order back to review.
+    $order = commerce_order_status_update($order, 'checkout_review');
+    drupal_goto('checkout/' . $order->order_id . '/review');
+  }
 }
