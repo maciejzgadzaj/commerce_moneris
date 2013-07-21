@@ -416,26 +416,30 @@ function commerce_moneris_hpp_callback_page() {
   $gateway = $payment_method['settings']['commerce_moneris_hpp']['commerce_moneris_hpp_gateway'];
 
   if ($gateway == COMMERCE_MONERIS_HPP_CANADA) {
-    if (!isset($_POST['response_order_id'])) {
+    if (!isset($_REQUEST['response_order_id'])) {
       drupal_not_found();
       return;
     }
 
     // Fields for CA Moneris.
-    $transaction_id = $_POST['bank_transaction_id'];
-    $amount = $_POST['charge_total'];
-    $order_id = $_POST['response_order_id'];
+    $order_id = isset($_REQUEST['response_order_id']) ? $_REQUEST['response_order_id'] : FALSE;
+    $transaction_id = isset($_REQUEST['bank_transaction_id']) ? $_REQUEST['bank_transaction_id'] : FALSE;
+    $amount = isset($_REQUEST['charge_total']) ? $_REQUEST['charge_total'] : 0;
+    $response_code = isset($_REQUEST['response_code']) ? $_REQUEST['response_code'] : -1;
+    $cancel = isset($_REQUEST['cancelTXN']) && $_REQUEST['cancelTXN'] ? TRUE : FALSE;
   }
   else {
-    if (!isset($_POST['order_no'])) {
+    if (!isset($_REQUEST['order_no'])) {
       drupal_not_found();
       return;
     }
 
     // Fields for US Moneris.
-    $transaction_id = $_POST['ref_num'];
-    $amount = $_POST['amount'];
-    $order_id = $_POST['order_no'];
+    $order_id = $_REQUEST['order_no'];
+    $transaction_id = $_REQUEST['ref_num'];
+    $amount = $_REQUEST['amount'];
+    $response_code = isset($_REQUEST['response_code']) ? $_REQUEST['response_code'] : -1;
+    $cancel = isset($_REQUEST['cancel']) && $_REQUEST['cancel'] ? TRUE : FALSE;
   }
 
   $order = commerce_order_load($order_id);
@@ -450,18 +454,23 @@ function commerce_moneris_hpp_callback_page() {
   $transaction->amount = $amount * 100;
   $transaction->message = 'Moneris ResponseCode: @responsecode <br />Moneris ResponseMessage: @message';
   $transaction->message_variables = array(
-    '@responsecode' => $_POST['response_code'],
-    '@message' => print_r($_POST, 1),
+    '@responsecode' => $response_code,
+    '@message' => print_r($_REQUEST, 1),
   );
-  $response_code = intval($_POST['response_code']);
 
-  $response_code = intval($response_code);
-  if ((0 <= $response_code) && ($response_code <= 49)) {
-    $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-    $payment_approved = TRUE;
+  if (! $cancel) {
+    $response_code = intval($response_code);
+    if ((0 <= $response_code) && ($response_code <= 49)) {
+      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      $payment_approved = TRUE;
+    }
+    else {
+      $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $payment_approved = FALSE;
+    }
   }
   else {
-    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+    $transaction->status = COMMERCE_PAYMENT_STATUS_CANCELED;
     $payment_approved = FALSE;
   }
 
@@ -477,8 +486,13 @@ function commerce_moneris_hpp_callback_page() {
     drupal_goto('checkout/' . $order->order_id . '/complete');
   }
   else {
-    // If the payment failed, display an error meesage.
-    drupal_set_message(t('We were unable to process your payment. Please enter your information again or try a different card.'), 'error');
+    if ($cancel) {
+      drupal_set_message(t('Payment was canceled.'), 'error');
+    }
+    else {
+      // If the payment failed, display an error meesage.
+      drupal_set_message(t('We were unable to process your payment. Please enter your information again or try a different card.'), 'error');
+    }
 
     // Set the order back to review.
     $order = commerce_order_status_update($order, 'checkout_review');
