@@ -68,6 +68,7 @@ function commerce_moneris_commerce_payment_method_info() {
     'title' => variable_get('commerce_moneris_hpp_title', 'Moneris HPP'),
     'description' => t('Moneris Hosted Pay Page Payment'),
     'active' => TRUE,
+    'terminal' => FALSE,
     'offsite' => TRUE,
     'offsite_autoredirect' => TRUE,
   );
