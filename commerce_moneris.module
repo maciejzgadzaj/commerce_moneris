@@ -77,6 +77,24 @@ function commerce_moneris_commerce_payment_method_info() {
 }
 
 /**
+ * Implements hook_commerce_order_status_info().
+ */
+function commerce_moneris_commerce_order_status_info() {
+  $order_statuses = array();
+  
+  // Add Payment Verification Required
+  $order_statuses['moneris_hpp_verification'] = array(
+    'name' => 'moneris_hpp_verification',
+    'title' => t('Payment Transaction Verification'),
+    'description' => t('An error occurred while processing the payment for this order. Verify the payment transactions for this order, and make any corrections necessary before changing its status.'),
+    'state' => 'pending',
+    'weight' => 20,
+  );
+
+  return $order_statuses;
+}
+
+/**
  * Form used to collect Moneris data.
  *
  * @param Array $payment_method
@@ -409,7 +427,7 @@ function commerce_moneris_hpp_server_url($settings) {
 }
 
 /**
- * Callback page for Moneris.
+ * Callback page for Moneris HPP.
  */
 function commerce_moneris_hpp_callback_page() {
   $payment_method = commerce_payment_method_instance_load('commerce_moneris_hpp|commerce_payment_commerce_moneris_hpp');
@@ -427,8 +445,20 @@ function commerce_moneris_hpp_callback_page() {
     $transaction_id = isset($_REQUEST['bank_transaction_id']) ? $_REQUEST['bank_transaction_id'] : FALSE;
     $amount = isset($_REQUEST['charge_total']) ? $_REQUEST['charge_total'] : 0;
     $response_code = isset($_REQUEST['response_code']) ? $_REQUEST['response_code'] : -1;
-    $cancel = isset($_REQUEST['cancelTXN']) && $_REQUEST['cancelTXN'] ? TRUE : FALSE;
+    $message = check_plain(isset($_REQUEST['message'])) ? check_plain($_REQUEST['message']) : FALSE;
+    if (isset($_REQUEST['cancelTXN'])){    
+      $cancel = isset($_REQUEST['cancelTXN']) && $_REQUEST['cancelTXN'] ? TRUE : FALSE;
+    }
+
+    // Test for "Enhanced Cancel" code 914
+    elseif (intval($response_code) == 914 ) {
+      $cancel = TRUE;
+    }
+    else {
+      $cancel = FALSE;
+    }
   }
+
   else {
     if (!isset($_REQUEST['order_no'])) {
       drupal_not_found();
@@ -440,6 +470,7 @@ function commerce_moneris_hpp_callback_page() {
     $transaction_id = $_REQUEST['ref_num'];
     $amount = $_REQUEST['amount'];
     $response_code = isset($_REQUEST['response_code']) ? $_REQUEST['response_code'] : -1;
+    $message = check_plain(isset($_REQUEST['message'])) ? check_plain($_REQUEST['message']) : FALSE;
     $cancel = isset($_REQUEST['cancel']) && $_REQUEST['cancel'] ? TRUE : FALSE;
   }
 
@@ -448,6 +479,11 @@ function commerce_moneris_hpp_callback_page() {
     watchdog('commerce_moneris_hpp', t('Invalid order ID: ') . $order_id, WATCHDOG_ERROR);
     drupal_set_message(t('There was an error with your request. Please contact the site administrator.'), 'error');
   }
+
+  // Load the order's current state.
+  $order_status_load = commerce_order_status_load($order->status);
+  $order_state = $order_status_load['state'];
+  $order_status = $order->status;
 
   // Create a commerce payment transaction.
   $transaction = commerce_payment_transaction_new('commerce_moneris_hpp', $order->order_id);
@@ -459,11 +495,23 @@ function commerce_moneris_hpp_callback_page() {
     '@message' => print_r($_REQUEST, 1),
   );
 
-  if (! $cancel) {
-    $response_code = intval($response_code);
-    if ((0 <= $response_code) && ($response_code <= 49)) {
-      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
-      $payment_approved = TRUE;
+  // Process the Transaction.  
+  // Verify that the response code is not null.
+  if ($response_code != "null") {
+
+    // Verify the order was not cancelled.
+    if (! $cancel) {
+      $response_code = intval($response_code);
+
+      // Verify that the response code indicates an approved payment.
+      if ((0 <= $response_code) && ($response_code <= 49)) {
+        $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+        $payment_approved = TRUE;
+      }
+      else {
+        $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+        $payment_approved = FALSE;
+      }
     }
     else {
       $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
@@ -471,32 +519,63 @@ function commerce_moneris_hpp_callback_page() {
     }
   }
   else {
-    $transaction->status = COMMERCE_PAYMENT_STATUS_CANCELED;
+    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
     $payment_approved = FALSE;
   }
 
-  // Save the payment transaction.
-  commerce_payment_transaction_save($transaction);
+   // Save the payment transaction.
+   commerce_payment_transaction_save($transaction);
 
-  if ($payment_approved) {
-    drupal_set_message(t('Payment succesfully.'));
-
+  // Verify that the order is in the checkout_payment state.
+  if ($order_status == 'checkout_payment'){
+    if ($payment_approved) {
     // Complete the order.
     $order = commerce_order_status_update($order, 'completed');
     commerce_checkout_complete($order);
     drupal_goto('checkout/' . $order->order_id . '/complete');
-  }
-  else {
-    if ($cancel) {
-      drupal_set_message(t('Payment was canceled.'), 'error');
     }
     else {
-      // If the payment failed, display an error meesage.
-      drupal_set_message(t('We were unable to process your payment. Please enter your information again or try a different card.'), 'error');
-    }
+      if ($cancel) {
+        drupal_set_message(t('Payment was canceled. Please try again.'), 'error');
+      }
 
-    // Set the order back to review.
-    $order = commerce_order_status_update($order, 'checkout_review');
-    drupal_goto('checkout/' . $order->order_id . '/review');
+      // If the response code is null.
+      elseif ($response_code == "null") {
+
+        // Print an error message with message data generated by Moneris.
+        drupal_set_message(t('There was an error processing your payment: ' . $message . '.<br />Please try again. If the problem persists please contact the site administrator.'), 'error');
+      }
+      else {
+
+        // If the payment failed, display an error message.
+        drupal_set_message(t('We were unable to process your payment. Please enter your information again or try a different card.'), 'error');
+      }
+
+      // Send the order back to the review page.
+      $order = commerce_order_status_update($order, 'checkout_review');
+      drupal_goto('checkout/' . $order->order_id . '/review');
+    }
+  }
+
+  // If the order is in completed or pending state go to the complete page and print a message.
+  elseif ($order_state == 'completed' || $order_state == 'pending' ) {
+
+    // If the payment went through flag it for verification.
+    if ($payment_approved){
+      $order = commerce_order_status_update($order, 'moneris_hpp_verification'); 
+    }  
+    drupal_set_message(t('Payment for this order has already been submitted.'), 'status');
+    drupal_goto('checkout/' . $order->order_id . '/complete');
+  }
+
+  // If the order is in any other state (such as shopping cart or canceled) return an error, and go to the homepage.
+  else {
+
+    // If the payment went through flag it for verification.
+    if ($payment_approved){
+      $order = commerce_order_status_update($order, 'moneris_hpp_verification'); 
+    }
+    drupal_set_message(t('An unknown error occurred while attempting to process your payment. Please try again. If the problem persists please contact the site administrator.'), 'error');
+    drupal_goto('<front>');
   }
 }
