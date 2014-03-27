@@ -345,7 +345,10 @@ function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $paymen
 
   $wrapper = entity_metadata_wrapper('commerce_order', $order);
   $amount = $wrapper->commerce_order_total->amount->value();
-
+  
+  // Allow other modules to alter the payment method config.
+  drupal_alter('commerce_moneris_hpp_settings', $payment_method['settings']['commerce_moneris_hpp']);
+ 
   $settings = $payment_method['settings']['commerce_moneris_hpp'];
   $gateway = $settings['commerce_moneris_hpp_gateway'];
 
