@@ -157,7 +157,6 @@ function commerce_moneris_submit_form($payment_method, $pane_values, $checkout_p
  *   An array indicating the amount and currency code to charge.
  */
 function commerce_moneris_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
-  $order->data['commerce_moneris'] = $pane_values;
   return commerce_moneris_transaction($payment_method, $order, $charge, $pane_values);
 }
 
@@ -186,10 +185,10 @@ function commerce_moneris_transaction($payment_method, $order, $charge, $values)
 
   // Prepare data.
   $amount      = number_format($charge['amount'] / 100, 2, '.', '');
-  $pan         = $order->data['commerce_moneris']['moneris_credit_card']['number'];
-  $expiry_date = substr($order->data['commerce_moneris']['moneris_credit_card']['exp_year'], 2, 2);
-  $expiry_date .= $order->data['commerce_moneris']['moneris_credit_card']['exp_month'];
-  $cvd         = $order->data['commerce_moneris']['moneris_credit_card']['cvd_value'];
+  $pan         = $values['moneris_credit_card']['number'];
+  $expiry_date = substr($values['moneris_credit_card']['exp_year'], 2, 2);
+  $expiry_date .= $values['moneris_credit_card']['exp_month'];
+  $cvd         = $values['moneris_credit_card']['cvd_value'];
   $order_id    = 'order-' . $order->order_id . '-' . time();
   $cust_id     = 'customer-' . $order->uid;
 

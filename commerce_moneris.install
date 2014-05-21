@@ -25,3 +25,90 @@ function commerce_moneris_uninstall() {
   variable_del('commerce_moneris_hpp_key');
   variable_del('commerce_moneris_hpp_title');
 }
+
+/**
+ * Sanitize commerce orders.
+ */
+function commerce_moneris_update_7100(array &$sandbox) {
+  if (!isset($sandbox['total'])) {
+    // Initialize batch update information.
+    $sandbox['progress'] = 0;
+    $sandbox['last_id_processed'] = -1;
+    $sandbox['total'] = db_query("SELECT COUNT(*) FROM {commerce_order} WHERE data LIKE :commerce_moneris", array(
+        ':commerce_moneris' => '%' . db_like(serialize('commerce_moneris')) . '%',
+      ))
+      ->fetchField();
+  }
+
+  $limit = 50;
+  $result = db_select('commerce_order', 'c')
+    ->fields('c', array('order_id', 'data'))
+    ->condition('order_id', $sandbox['last_id_processed'], '>')
+    ->condition('data', '%' . db_like(serialize('commerce_moneris')) . '%', 'LIKE')
+    ->orderBy('order_id', 'ASC')
+    ->range(0, $limit)
+    ->execute();
+
+  foreach ($result as $row) {
+    $data = unserialize($row->data);
+    // Strip out the Commerce Moneris data from the order and re-save the row.
+    unset($data['commerce_moneris']);
+    $query = db_update('commerce_order')
+      ->condition('order_id', $row->order_id)
+      ->fields(array('data' => serialize($data)))
+      ->execute();
+    $sandbox['progress']++;
+    $sandbox['last_id_processed'] = $row->order_id;
+  }
+
+  if ($sandbox['progress'] < $sandbox['total']) {
+    $sandbox['#finished'] = ($sandbox['progress'] / $sandbox['total']);
+  }
+  else {
+    $sandbox['#finished'] = 1;
+  }
+}
+
+/**
+ * Sanitize commerce order revisions.
+ */
+function commerce_moneris_update_7101(array &$sandbox) {
+  if (!isset($sandbox['total'])) {
+    // Initialize batch update information.
+    $sandbox['progress'] = 0;
+    $sandbox['last_id_processed'] = -1;
+    $sandbox['total'] = db_query("SELECT COUNT(*) FROM {commerce_order_revision} WHERE data LIKE :commerce_moneris", array(
+        ':commerce_moneris' => '%' . db_like(serialize('commerce_moneris')) . '%',
+      ))
+      ->fetchField();
+  }
+
+  $limit = 50;
+  $result = db_select('commerce_order_revision', 'c')
+    ->fields('c', array('revision_id', 'data'))
+    ->condition('revision_id', $sandbox['last_id_processed'], '>')
+    ->condition('data', '%' . db_like(serialize('commerce_moneris')) . '%', 'LIKE')
+    ->orderBy('revision_id', 'ASC')
+    ->range(0, $limit)
+    ->execute();
+
+  foreach ($result as $row) {
+    $data = unserialize($row->data);
+    // Strip out the Commerce Moneris data from the order revision and re-save
+    // the row.
+    unset($data['commerce_moneris']);
+    $query = db_update('commerce_order_revision')
+      ->condition('revision_id', $row->revision_id)
+      ->fields(array('data' => serialize($data)))
+      ->execute();
+    $sandbox['progress']++;
+    $sandbox['last_id_processed'] = $row->revision_id;
+  }
+
+  if ($sandbox['progress'] < $sandbox['total']) {
+    $sandbox['#finished'] = ($sandbox['progress'] / $sandbox['total']);
+  }
+  else {
+    $sandbox['#finished'] = 1;
+  }
+}
