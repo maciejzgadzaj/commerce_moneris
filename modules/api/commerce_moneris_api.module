@@ -1,0 +1,309 @@
+<?php
+/**
+ * @file
+ * Provides integration with Moneris API payment method (on-site).
+ */
+
+/**
+ * Implements hook_commerce_payment_method_info().
+ */
+function commerce_moneris_api_commerce_payment_method_info() {
+  $payment_methods = array();
+
+  $payment_methods['commerce_moneris_api'] = array(
+    'title' => 'Moneris API',
+    'display_title' => t('Credit card'),
+    'description' => t('Moneris API payment method (on-site)'),
+  );
+
+  return $payment_methods;
+}
+
+/**
+ * Payment method callback: settings form.
+ */
+function commerce_moneris_api_settings_form($settings = array()) {
+  // Merge default settings into the stored settings array.
+  $settings = array_replace_recursive(commerce_moneris_api_default_settings(), $settings);
+
+  $form = array();
+
+  $form['commerce_moneris_api_gateway'] = array(
+    '#type' => 'select',
+    '#title' => t('Gateway'),
+    '#options' => commerce_moneris_gateways(TRUE),
+    '#default_value' => $settings['commerce_moneris_api_gateway'],
+  );
+
+  $form['commerce_moneris_api_server'] = array(
+    '#type' => 'radios',
+    '#title' => t('Environment'),
+    '#options' => commerce_moneris_environments(TRUE),
+    '#default_value' => $settings['commerce_moneris_api_server'],
+  );
+
+  // Collect Moneris Store ID and API Token for each available environment.
+  foreach (commerce_moneris_gateways() as $gateway_id => $gateway) {
+    foreach (commerce_moneris_environments() as $environment_id => $environment) {
+
+      $form[$gateway_id][$environment_id]['commerce_moneris_api_store_id'] = array(
+        '#type' => 'textfield',
+        '#title' => t('@gateway @environemnt Store ID', array(
+          '@gateway' => $gateway,
+          '@environemnt' => $environment,
+        )),
+        '#default_value' => $settings[$gateway_id][$environment_id]['commerce_moneris_api_store_id'],
+        '#states' => array(
+          'visible' => array(
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_server]"]' => array('value' => $environment_id),
+          ),
+          'required' => array(
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_server]"]' => array('value' => $environment_id),
+          ),
+        ),
+      );
+
+      $form[$gateway_id][$environment_id]['commerce_moneris_api_token'] = array(
+        '#type' => 'textfield',
+        '#title' => t('@gateway @env API Token', array(
+          '@gateway' => $gateway,
+          '@env' => $environment,
+        )),
+        '#default_value' => $settings[$gateway_id][$environment_id]['commerce_moneris_api_token'],
+        '#states' => array(
+          'visible' => array(
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_server]"]' => array('value' => $environment_id),
+          ),
+          'required' => array(
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_server]"]' => array('value' => $environment_id),
+          ),
+        ),
+      );
+    }
+
+    $form[$gateway_id]['commerce_moneris_api_txn_type'] = array(
+      '#type' => 'radios',
+      '#title' => t('Default @gateway credit card transaction type', array('@gateway' => $gateway)),
+      '#options' => commerce_moneris_transaction_types($gateway_id),
+      '#default_value' => $settings[$gateway_id]['commerce_moneris_api_txn_type'],
+      '#states' => array(
+        'visible' => array(
+          ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_gateway]"]' => array('value' => $gateway_id),
+        ),
+        'required' => array(
+          ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_gateway]"]' => array('value' => $gateway_id),
+        ),
+      ),
+    );
+
+  }
+
+  $form['commerce_moneris_api_ssl'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use SSL'),
+    '#default_value' => $settings['commerce_moneris_api_ssl'],
+  );
+
+  $form['commerce_moneris_api_curl_certificate_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('cURL certificate'),
+    '#description' => t('Path to the cURL certificate cacert.pem. You can download it from: http://curl.haxx.se/docs/caextract.html . This is required in case you are using SSL.'),
+    '#default_value' => $settings['commerce_moneris_api_curl_certificate_path'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_ssl]"]' => array('checked' => TRUE),
+      ),
+      'required' => array(
+        ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_api_ssl]"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * Returns default settings for the Moneris API payment method.
+ *
+ * @see commerce_moneris_api_settings_form()
+ */
+function commerce_moneris_api_default_settings() {
+  $default_settings = array(
+    'commerce_moneris_api_gateway' => 'us',
+    'commerce_moneris_api_server' => 'test',
+    'commerce_moneris_api_txn_type' => '',
+    'commerce_moneris_api_ssl' => FALSE,
+    'commerce_moneris_api_curl_certificate_path' => '',
+  );
+  foreach (commerce_moneris_gateways() as $gateway_id => $gateway) {
+    foreach (commerce_moneris_environments() as $environment_id => $environment) {
+      $default_settings[$gateway_id][$environment_id]['commerce_moneris_api_store_id'] = '';
+      $default_settings[$gateway_id][$environment_id]['commerce_moneris_api_token'] = '';
+    }
+    // For default transaction type we return key of the first defined type.
+    $transaction_types = commerce_moneris_transaction_types($gateway_id);
+    reset($transaction_types);
+    $default_settings[$gateway_id]['commerce_moneris_api_txn_type'] = key($transaction_types);
+  }
+  return $default_settings;
+}
+
+/**
+ * Payment method callback: checkout form.
+ */
+function commerce_moneris_api_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+  module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
+  return commerce_payment_credit_card_form(array('code' => ''));
+}
+
+/**
+ * Payment method callback: checkout form validation.
+ */
+function commerce_moneris_api_submit_form_validate($payment_method, $pane_form, $pane_values, $order, $form_parents = array()) {
+  module_load_include('inc', 'commerce_payment', 'includes/commerce_payment.credit_card');
+
+  // Validate the credit card fields.
+  $settings = array(
+    'form_parents' => array_merge($form_parents, array('credit_card')),
+  );
+
+  if (!commerce_payment_credit_card_validate($pane_values['credit_card'], $settings)) {
+    return FALSE;
+  }
+}
+
+/**
+ * Payment method callback: checkout form submission.
+ */
+function commerce_moneris_api_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
+  return commerce_moneris_api_transaction($payment_method, $order, $charge, $pane_values);
+}
+
+/**
+ * Creates a moneris payment transaction. Post data to moneris.
+ *
+ * @param Array $payment_method
+ *   The payment method instance object used to charge this payment.
+ * @param Object $order
+ *   The order object the payment applies to.
+ * @param Array $charge
+ *   An array indicating the amount and currency code to charge.
+ * @param Array $values
+ *   The vlaues submited by user.
+ */
+function commerce_moneris_api_transaction($payment_method, $order, $charge, $values) {
+  $transaction                 = commerce_payment_transaction_new('commerce_moneris', $order->order_id);
+  $transaction->instance_id    = $payment_method['instance_id'];
+  $transaction->amount         = $charge['amount'];
+  $transaction->currency_code  = $charge['currency_code'];
+
+  // Get the configurations.
+  $gateway     = variable_get('commerce_moneris_gateway', 'ca');
+  $store_id    = variable_get('commerce_moneris_store_id', '');
+  $api_token   = variable_get('commerce_moneris_apitoken', '');
+
+  // Prepare data.
+  $amount      = number_format($charge['amount'] / 100, 2, '.', '');
+  $pan         = $values['moneris_credit_card']['number'];
+  $expiry_date = substr($values['moneris_credit_card']['exp_year'], 2, 2);
+  $expiry_date .= $values['moneris_credit_card']['exp_month'];
+  $cvd         = $values['moneris_credit_card']['cvd_value'];
+  $order_id    = 'order-' . $order->order_id . '-' . time();
+  $cust_id     = 'customer-' . $order->uid;
+
+  // Create transaction data.
+  $purchase_type = $gateway == 'ca' ? 'purchase' : 'us_purchase';
+  $txn_array = array(
+    'type' => $purchase_type,
+    'order_id' => $order_id,
+    'cust_id' => $cust_id,
+    'amount' => $amount,
+    'pan' => $pan,
+    'expdate' => $expiry_date,
+    'crypt_type' => '7',
+    'cvd_indicator' => 1,
+    'cvd_value' => $cvd,
+  );
+
+  // Allow other modules to alter the txnArray.
+  drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+
+  $commerce_moneris = new CommerceMoneris($gateway, $store_id, $api_token);
+
+  $production = variable_get('commerce_moneris_production', TRUE);
+  $ssl = variable_get('commerce_moneris_ssl', FALSE);
+
+  if ($ssl) {
+    $cacert_path = variable_get('commerce_moneris_curl_certificate_path', '');
+    $result = $commerce_moneris->post($purchase_type, $txn_array, $production, $ssl, $cacert_path);
+  }
+  else {
+    $result = $commerce_moneris->post($purchase_type, $txn_array, $production);
+  }
+
+  // If the request failed, display an erorr and log it.
+  if (isset($result['error_no'])) {
+    watchdog('commerce_moneris', 'Error with cURL request: (!error_no). Message: !error_message',
+      array(
+        '!error_no' => $result['error_no'],
+        '!error_message' => check_plain($result['error_message'])),
+      WATCHDOG_ERROR
+    );
+    drupal_set_message(t('There was an error with your request. Please contact the site administrator.'), 'error');
+
+    return FALSE;
+  }
+
+  // Get the response object.
+  $commerce_moneris_response = $commerce_moneris->getCommerceMonerisResponse();
+  $response_data = $commerce_moneris_response->getResponseData();
+
+  watchdog('commerce_moneris', 'Moneris transaction response: !param',
+    array('!param' => '<pre>' . check_plain(print_r($response_data, TRUE)) . '</pre>'));
+
+  $transaction->message = 'Moneris ResponseCode: @responsecode <br />Moneris ResponseMessage: @message';
+  $transaction->message_variables = array(
+    '@responsecode' => $commerce_moneris_response->getResponseCode(),
+    '@message' => $commerce_moneris_response->getMessage(),
+  );
+
+  // Set the RemoteID as Moneris TransID.
+  $transaction->remote_id = $response_data['TransID'];
+
+  $response_code = $commerce_moneris_response->getResponseCode();
+
+  if ($response_code != "null") {
+    $response_code = intval($response_code);
+    if ((0 <= $response_code) && ($response_code <= 49)) {
+      $transaction->status = COMMERCE_PAYMENT_STATUS_SUCCESS;
+      $payment_approved = TRUE;
+    }
+    else {
+      $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $payment_approved = FALSE;
+    }
+  }
+  else {
+    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+    $payment_approved = FALSE;
+  }
+
+  commerce_payment_transaction_save($transaction);
+
+  // If the payment failed, display an error.
+  if (!$payment_approved) {
+    drupal_set_message(t('We were unable to process your payment. Please enter your information again or try a different card.'), 'error');
+
+    if (variable_get('commerce_moneris_display_response', 1)) {
+      drupal_set_message(check_plain($commerce_moneris_response->getMessage()), 'error');
+    }
+
+    return FALSE;
+  }
+
+  return TRUE;
+}

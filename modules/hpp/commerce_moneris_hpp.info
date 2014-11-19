@@ -1,0 +1,5 @@
+name = Commerce Moneris HPP
+description = Provides integration with Moneris Hosted Pay Page payment method (off-site).
+package = Commerce (contrib)
+dependencies[] = commerce_moneris
+core = 7.x

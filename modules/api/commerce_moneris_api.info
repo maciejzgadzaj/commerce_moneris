@@ -1,0 +1,5 @@
+name = Commerce Moneris API
+description = Provides integration with Moneris API payment method (on-site).
+package = Commerce (contrib)
+dependencies[] = commerce_moneris
+core = 7.x
