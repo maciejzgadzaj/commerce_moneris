@@ -312,7 +312,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     ), WATCHDOG_DEBUG);
   }
 
-  $mpg_result = new mpgHttpsPost($store_id, $api_token, $mpg_request, $cacert_path);
+  $mpg_result = new mpgHttpsPost($store_id, $api_token, $mpg_request, $environment, $cacert_path);
 
   if (!empty($payment_method['settings']['log']['response'])) {
     watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !result', array(
