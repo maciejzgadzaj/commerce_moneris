@@ -112,26 +112,26 @@ function commerce_moneris_api_settings_form($settings = array()) {
   // See http://www.monerisusa.com/support/merchant-alerts.aspx
   // See https://www.drupal.org/node/2369711
 
-//  $form['use_ssl'] = array(
-//    '#type' => 'checkbox',
-//    '#title' => t('Use SSL'),
-//    '#default_value' => $settings['use_ssl'],
-//  );
-//
-//  $form['curl_certificate_path'] = array(
-//    '#type' => 'textfield',
-//    '#title' => t('cURL certificate'),
-//    '#description' => t('Path to the cURL certificate cacert.pem. You can download it from: http://curl.haxx.se/docs/caextract.html . This is required in case you are using SSL.'),
-//    '#default_value' => $settings['curl_certificate_path'],
-//    '#states' => array(
-//      'visible' => array(
-//        ':input[name="parameter[payment_method][settings][payment_method][settings][use_ssl]"]' => array('checked' => TRUE),
-//      ),
-//      'required' => array(
-//        ':input[name="parameter[payment_method][settings][payment_method][settings][use_ssl]"]' => array('checked' => TRUE),
-//      ),
-//    ),
-//  );
+  $form['use_ssl'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use SSL'),
+    '#default_value' => $settings['use_ssl'],
+  );
+
+  $form['curl_certificate_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('cURL certificate'),
+    '#description' => t('Path to the cURL certificate cacert.pem. You can download it from: http://curl.haxx.se/docs/caextract.html . This is required in case you are using SSL.'),
+    '#default_value' => $settings['curl_certificate_path'],
+    '#states' => array(
+      'visible' => array(
+        ':input[name="parameter[payment_method][settings][payment_method][settings][use_ssl]"]' => array('checked' => TRUE),
+      ),
+      'required' => array(
+        ':input[name="parameter[payment_method][settings][payment_method][settings][use_ssl]"]' => array('checked' => TRUE),
+      ),
+    ),
+  );
 
   $form['log'] = array(
     '#type' => 'checkboxes',
@@ -223,6 +223,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   $store_id = $payment_method['settings'][$gateway][$environment]['store_id'];
   $api_token = $payment_method['settings'][$gateway][$environment]['api_token'];
   $transaction_type = $payment_method['settings'][$gateway]['txn_type'];
+  $cacert_path = (!empty($payment_method['settings']['use_ssl'])) ? $payment_method['settings']['curl_certificate_path'] : '';
 
   // Save initial transaction.
   $transaction = commerce_payment_transaction_new('commerce_moneris_api', $order->order_id);
@@ -311,7 +312,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     ), WATCHDOG_DEBUG);
   }
 
-  $mpg_result = new mpgHttpsPost($store_id, $api_token, $mpg_request);
+  $mpg_result = new mpgHttpsPost($store_id, $api_token, $mpg_request, $cacert_path);
 
   if (!empty($payment_method['settings']['log']['response'])) {
     watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !result', array(
