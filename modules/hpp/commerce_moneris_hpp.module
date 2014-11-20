@@ -72,84 +72,98 @@ function commerce_moneris_hpp_menu() {
  */
 function commerce_moneris_hpp_settings_form($settings = array()) {
   // Merge default settings into the stored settings array.
-  $settings = array_replace_recursive(commerce_moneris_hpp_default_settings(), $settings);
+  // Settings are stored in multi-level array, so we need recursive merge. And
+  // actually replace instead of merge, to make sure the default settings are
+  // correctly overriden by custom user settings (array_merge_recursive() would
+  // just add new array elements instead of overriding existing ones).
+  $settings = array_replace_recursive(commerce_moneris_hpp_settings_default(), $settings);
 
   $form = array();
 
-  $form['commerce_moneris_hpp_gateway'] = array(
+  $form['gateway'] = array(
     '#type' => 'select',
     '#title' => t('Gateway'),
     '#options' => commerce_moneris_gateways(TRUE),
-    '#default_value' => $settings['commerce_moneris_hpp_gateway'],
+    '#default_value' => $settings['gateway'],
   );
 
-  $form['commerce_moneris_hpp_server'] = array(
+  $form['server'] = array(
     '#type' => 'radios',
     '#title' => t('Environment'),
     '#options' => commerce_moneris_environments(TRUE),
-    '#default_value' => $settings['commerce_moneris_hpp_server'],
+    '#default_value' => $settings['server'],
   );
 
   // Collect Moneris Store ID and HPP Key for each available environment.
   foreach (commerce_moneris_gateways() as $gateway_id => $gateway) {
     foreach (commerce_moneris_environments() as $environment_id => $environment) {
 
-      $form[$gateway_id][$environment_id]['commerce_moneris_hpp_store_id'] = array(
+      $form[$gateway_id][$environment_id]['store_id'] = array(
         '#type' => 'textfield',
         '#title' => t('@gateway @environemnt Store ID', array(
           '@gateway' => $gateway,
           '@environemnt' => $environment,
         )),
-        '#default_value' => $settings[$gateway_id][$environment_id]['commerce_moneris_hpp_store_id'],
+        '#default_value' => $settings[$gateway_id][$environment_id]['store_id'],
         '#states' => array(
           'visible' => array(
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_gateway]"]' => array('value' => $gateway_id),
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_server]"]' => array('value' => $environment_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][server]"]' => array('value' => $environment_id),
           ),
           'required' => array(
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_gateway]"]' => array('value' => $gateway_id),
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_server]"]' => array('value' => $environment_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][server]"]' => array('value' => $environment_id),
           ),
         ),
       );
 
-      $form[$gateway_id][$environment_id]['commerce_moneris_hpp_key'] = array(
+      $form[$gateway_id][$environment_id]['hpp_key'] = array(
         '#type' => 'textfield',
         '#title' => t('@gateway @env HPP Key', array(
           '@gateway' => $gateway,
           '@env' => $environment,
         )),
-        '#default_value' => $settings[$gateway_id][$environment_id]['commerce_moneris_hpp_key'],
+        '#default_value' => $settings[$gateway_id][$environment_id]['hpp_key'],
         '#states' => array(
           'visible' => array(
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_gateway]"]' => array('value' => $gateway_id),
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_server]"]' => array('value' => $environment_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][server]"]' => array('value' => $environment_id),
           ),
           'required' => array(
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_gateway]"]' => array('value' => $gateway_id),
-            ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_server]"]' => array('value' => $environment_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
+            ':input[name="parameter[payment_method][settings][payment_method][settings][server]"]' => array('value' => $environment_id),
           ),
         ),
       );
 
     }
 
-    $form[$gateway_id]['commerce_moneris_hpp_txn_type'] = array(
+    $form[$gateway_id]['txn_type'] = array(
       '#type' => 'radios',
       '#title' => t('Default @gateway credit card transaction type', array('@gateway' => $gateway)),
       '#options' => commerce_moneris_transaction_types($gateway_id),
-      '#default_value' => $settings[$gateway_id]['commerce_moneris_hpp_txn_type'],
+      '#default_value' => $settings[$gateway_id]['txn_type'],
       '#states' => array(
         'visible' => array(
-          ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_gateway]"]' => array('value' => $gateway_id),
+          ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
         ),
         'required' => array(
-          ':input[name="parameter[payment_method][settings][payment_method][settings][commerce_moneris_hpp_gateway]"]' => array('value' => $gateway_id),
+          ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
         ),
       ),
     );
 
   }
+
+  $form['log'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Log the following messages for debugging'),
+    '#options' => array(
+      'request' => t('API request messages'),
+      'response' => t('API response messages'),
+    ),
+    '#default_value' => $settings['log'],
+  );
 
   return $form;
 }
@@ -159,20 +173,21 @@ function commerce_moneris_hpp_settings_form($settings = array()) {
  *
  * @see commerce_moneris_hpp_settings_form()
  */
-function commerce_moneris_hpp_default_settings() {
+function commerce_moneris_hpp_settings_default() {
   $default_settings = array(
-    'commerce_moneris_hpp_gateway' => 'us',
-    'commerce_moneris_hpp_server' => 'test',
+    'gateway' => 'us',
+    'server' => 'test',
+    'log' => array(),
   );
   foreach (commerce_moneris_gateways() as $gateway_id => $gateway) {
     foreach (commerce_moneris_environments() as $environment_id => $environment) {
-      $default_settings[$gateway_id][$environment_id]['commerce_moneris_hpp_store_id'] = '';
-      $default_settings[$gateway_id][$environment_id]['commerce_moneris_hpp_key'] = '';
+      $default_settings[$gateway_id][$environment_id]['store_id'] = '';
+      $default_settings[$gateway_id][$environment_id]['hpp_key'] = '';
     }
     // For default transaction type we return key of the first defined type.
     $transaction_types = commerce_moneris_transaction_types($gateway_id);
     reset($transaction_types);
-    $default_settings[$gateway_id]['commerce_moneris_hpp_txn_type'] = key($transaction_types);
+    $default_settings[$gateway_id]['txn_type'] = key($transaction_types);
   }
   return $default_settings;
 }
@@ -182,8 +197,7 @@ function commerce_moneris_hpp_default_settings() {
  */
 function commerce_moneris_hpp_callback_page() {
   $payment_method = commerce_payment_method_instance_load('commerce_moneris_hpp|commerce_payment_commerce_moneris_hpp');
-  $settings = $payment_method['settings']['commerce_moneris_hpp'];
-  $gateway = $payment_method['settings']['commerce_moneris_hpp']['commerce_moneris_hpp_gateway'];
+  $gateway = $payment_method['settings']['gateway'];
 
   $language = isset($_SESSION['client_data']['language']) ? $_SESSION['client_data']['language'] : language_default('language');
 
@@ -341,9 +355,6 @@ function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $paymen
 
   $wrapper = entity_metadata_wrapper('commerce_order', $order);
   $amount = $wrapper->commerce_order_total->amount->value();
-
-  // Allow other modules to alter the payment method config.
-  drupal_alter('commerce_moneris_hpp_settings', $payment_method['settings']['commerce_moneris_hpp']);
 
   $settings = $payment_method['settings']['commerce_moneris_hpp'];
   $gateway = $settings['commerce_moneris_hpp_gateway'];

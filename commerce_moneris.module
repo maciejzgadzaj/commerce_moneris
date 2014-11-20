@@ -5,6 +5,32 @@
  * Provides moneris payment method for Drupal Commerce.
  */
 
+define('COMMERCE_PAYMENT_STATUS_MONERIS_INITIATED', 'INITIATED');
+define('COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY', 'PREAUTH');
+
+/**
+ * Implements hook_commerce_payment_transaction_status_info().
+ */
+function commerce_moneris_commerce_payment_transaction_status_info() {
+  $statuses = array();
+
+  $statuses[COMMERCE_PAYMENT_STATUS_MONERIS_INITIATED] = array(
+    'status' => COMMERCE_PAYMENT_STATUS_MONERIS_INITIATED,
+    'title' => t('Initiated'),
+    'icon' => drupal_get_path('module', 'commerce_payment') . '/theme/icon-pending.png',
+    'total' => FALSE,
+  );
+
+  $statuses[COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY] = array(
+    'status' => COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY,
+    'title' => t('Pre-authorized'),
+    'icon' => drupal_get_path('module', 'commerce_payment') . '/theme/icon-success.png',
+    'total' => FALSE,
+  );
+
+  return $statuses;
+}
+
 /**
  * Implements hook_permission().
  */
@@ -76,11 +102,11 @@ function commerce_moneris_transaction_types($gateway_id, $translated = FALSE) {
   $transaction_types = array(
     'ca' => array(
       'purchase' => t('Purchase'),
-      'preauth' => t('PreAuth'),
+//      'preauth' => t('PreAuth'),
     ),
     'us' => array(
       'us_purchase' => t('Purchase'),
-      'us_preauth' => t('PreAuth'),
+//      'us_preauth' => t('PreAuth'),
     ),
   );
 
