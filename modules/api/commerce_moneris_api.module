@@ -104,34 +104,40 @@ function commerce_moneris_api_settings_form($settings = array()) {
       ),
     );
 
+    $form[$gateway_id]['extra'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Extra features'),
+      '#description' => t('To have the eFraud features added to your merchant profile, please call Moneris Service Centre to have your profile updated.'),
+      '#options' => array(
+        'cvd' => t('eFraud: Enable CVD (Card Validation Digits)'),
+        'avs' => t('eFraud: Enable AVS verification (Address Verification System)'),
+        'ssl' => t('Use SSL'),
+      ),
+      '#default_value' => $settings[$gateway_id]['extra'],
+      '#states' => array(
+        'visible' => array(
+          ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
+        ),
+      ),
+    );
+
+    $form[$gateway_id]['curl_certificate_path'] = array(
+      '#type' => 'textfield',
+      '#title' => t('cURL certificate'),
+      '#description' => t('Path to the cURL certificate file <em>cacert.pem</em>, either absolute or relative to Drupal installation (including certificate file name - for example <em>/etc/ssl/certs/cacert.pem</em>). You can download it from <a href="@download_url">CA Extract page</a>.', array('@download_url' => url('http://curl.haxx.se/docs/caextract.html'))),
+      '#default_value' => $settings[$gateway_id]['curl_certificate_path'],
+      '#states' => array(
+        'visible' => array(
+          ':input[name="parameter[payment_method][settings][payment_method][settings][gateway]"]' => array('value' => $gateway_id),
+          ':input[name="parameter[payment_method][settings][payment_method][settings][' . $gateway_id . '][extra][ssl]"]' => array('checked' => TRUE),
+        ),
+        'required' => array(
+          ':input[name="parameter[payment_method][settings][payment_method][settings][' . $gateway_id . '][extra][ssl]"]' => array('checked' => TRUE),
+        ),
+      ),
+    );
+
   }
-
-  // SSL part should probably be reworked after Moneris' announcement that they
-  // will be discontinuing the use of SSLv3 for eSelect Plus US effective Friday,
-  // November 14th, 2014.
-  // See http://www.monerisusa.com/support/merchant-alerts.aspx
-  // See https://www.drupal.org/node/2369711
-
-  $form['use_ssl'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Use SSL'),
-    '#default_value' => $settings['use_ssl'],
-  );
-
-  $form['curl_certificate_path'] = array(
-    '#type' => 'textfield',
-    '#title' => t('cURL certificate'),
-    '#description' => t('Path to the cURL certificate cacert.pem. You can download it from: http://curl.haxx.se/docs/caextract.html . This is required in case you are using SSL.'),
-    '#default_value' => $settings['curl_certificate_path'],
-    '#states' => array(
-      'visible' => array(
-        ':input[name="parameter[payment_method][settings][payment_method][settings][use_ssl]"]' => array('checked' => TRUE),
-      ),
-      'required' => array(
-        ':input[name="parameter[payment_method][settings][payment_method][settings][use_ssl]"]' => array('checked' => TRUE),
-      ),
-    ),
-  );
 
   $form['log'] = array(
     '#type' => 'checkboxes',
@@ -155,9 +161,6 @@ function commerce_moneris_api_settings_default() {
   $default_settings = array(
     'gateway' => 'us',
     'server' => 'test',
-    'txn_type' => '',
-    'use_ssl' => FALSE,
-    'curl_certificate_path' => '',
     'log' => array(),
   );
   foreach (commerce_moneris_gateways() as $gateway_id => $gateway) {
@@ -169,6 +172,12 @@ function commerce_moneris_api_settings_default() {
     $transaction_types = commerce_moneris_transaction_types($gateway_id);
     reset($transaction_types);
     $default_settings[$gateway_id]['txn_type'] = key($transaction_types);
+    $default_settings[$gateway_id]['extra'] = array(
+      'avs' => 'avs',
+      'cvd' => 'cvd',
+      'ssl' => FALSE,
+      'curl_certificate_path' => '',
+    );
   }
   return $default_settings;
 }
@@ -205,16 +214,17 @@ function commerce_moneris_api_submit_form_submit($payment_method, $pane_form, $p
 }
 
 /**
- * Creates a moneris payment transaction. Post data to moneris.
+ * Prepares and posts data to Moneris API, processes its response
+ * and creates a payment transaction.
  *
- * @param Array $payment_method
+ * @param array $payment_method
  *   The payment method instance object used to charge this payment.
- * @param Object $order
+ * @param object $order
  *   The order object the payment applies to.
- * @param Array $charge
+ * @param array $charge
  *   An array indicating the amount and currency code to charge.
- * @param Array $values
- *   The vlaues submited by user.
+ * @param array $values
+ *   The values submitted by user.
  */
 function commerce_moneris_api_transaction($payment_method, $order, $charge, $values) {
   // Get the configurations.
@@ -223,7 +233,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   $store_id = $payment_method['settings'][$gateway][$environment]['store_id'];
   $api_token = $payment_method['settings'][$gateway][$environment]['api_token'];
   $transaction_type = $payment_method['settings'][$gateway]['txn_type'];
-  $cacert_path = (!empty($payment_method['settings']['use_ssl'])) ? $payment_method['settings']['curl_certificate_path'] : '';
+  $cacert_path = (!empty($payment_method['settings'][$gateway]['extra']['ssl'])) ? $payment_method['settings'][$gateway]['curl_certificate_path'] : '';
 
   // Save initial transaction.
   $transaction = commerce_payment_transaction_new('commerce_moneris_api', $order->order_id);
@@ -237,22 +247,36 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   );
   commerce_payment_transaction_save($transaction);
 
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+
+  // Tax amount - as seen in commerce_paypal_ec_itemize_order().
+  $order_total = $order_wrapper->commerce_order_total->value();
+  $tax_amount = (module_exists('commerce_tax')) ? commerce_round(COMMERCE_ROUND_HALF_UP, commerce_tax_total_amount($order_total['data']['components'], FALSE, $order_total['currency_code'])) : 0;
+
   // Create transaction data.
   $txn_array = array(
     'type' => $transaction_type,
-    'order_id' => 'order-' . $order->order_id . '-' . time(),
-    'cust_id' => 'customer-' . $order->uid,
+    // We need this time() modifier here, otherwise the gateway will respond
+    // with an error 'The transaction was not sent to the host because of
+    // a duplicate order id'.
+    'order_id' => $order->order_id . '-' . time(),
     'amount' => number_format(commerce_currency_amount_to_decimal($charge['amount'], $charge['currency_code']), 2, '.', ''),
+    // '7' stands for 'SSL enabled merchant'.
     'crypt_type' => '7',
+    // Optional fields.
+    'cust_id' => $order->uid,
+    'dynamic_descriptor' => variable_get('site_name', ''),
+    // Optional Level 2 variables.
+    'commcard_invoice' => $order->order_number,
+    'commcard_tax_amount' => $tax_amount,
   );
-  // What about commcard_invoice and commcard_tax_amount ?
-
   // We don't want credit card data to go through alter hook implementations
   // below, so we add them only after they have been already called.
 
   // Allow other modules to alter the transaction array.
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
 
+  // Prepare credit card data to be added to transaction array.
   $cc_data = array(
     'pan' => $values['credit_card']['number'],
     'expdate' => substr($values['credit_card']['exp_year'], 2, 2) . $values['credit_card']['exp_month'],
@@ -264,65 +288,69 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   // overwritten by our $cc_data values.
   $txn_array = array_merge($txn_array, $cc_data);
 
-  // Log the request if requested.
-  if (!empty($payment_method['settings']['log']['request'])) {
-    // Mask the credit card number and CVV before saving it to dblog.
-    $log_txn_array = $txn_array;
-
-    if (!empty($log_txn_array['pan'])) {
-      $log_txn_array['pan'] = str_repeat('X', strlen($log_txn_array['pan']) - 4) . substr($log_txn_array['pan'], -4);
-    }
-    if (!empty($log_txn_array['expdate'])) {
-      $log_txn_array['expdate'] = str_repeat('X', strlen($log_txn_array['expdate']));
-    }
-    if (!empty($log_txn_array['cvd_value'])) {
-      $log_txn_array['cvd_value'] = str_repeat('X', strlen($log_txn_array['cvd_value']));
-    }
-
-    watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: Transaction !param', array(
-      '@order_id' => $order->order_id,
-      '@gateway' => $gateway,
-      '@environment' => $environment,
-      '!param' => '<pre>' . check_plain(print_r($log_txn_array, TRUE)) . '</pre>',
-    ), WATCHDOG_DEBUG);
-  }
-
   // Load native Moneris library relevant to selected gateway.
   module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
 
   $mpg_transaction = new mpgTransaction($txn_array);
 
-  if ($payment_method['settings']['log']['request'] == 'request') {
+  // eFraud: CVD (Card Validation Digits) verification.
+  if (!empty($payment_method['settings'][$gateway]['extra']['cvd'])) {
+    $cvd_template = array(
+      'cvd_indicator' => $txn_array['cvd_indicator'],
+      'cvd_value' => $txn_array['cvd_value'],
+    );
+    $mpg_cvd_info = new mpgCvdInfo($cvd_template);
+    $mpg_transaction->setCvdInfo($mpg_cvd_info);
+  }
+
+  // eFraud: AVS (Address Verification Service) verification.
+  if (!empty($payment_method['settings'][$gateway]['extra']['avs'])) {
+    if ($order_wrapper->commerce_customer_billing->value()) {
+      $billing_address = $order_wrapper->commerce_customer_billing->commerce_customer_address->value();
+      // For the moment we assume that street number will be the first element
+      // of thoroughfare value, with the remaining part being street name.
+      $thoroughfare = explode(' ', $billing_address['thoroughfare'], 2);
+
+      $avs_template = array(
+        'avs_street_number' => $thoroughfare[0],
+        'avs_street_name' => $thoroughfare[1],
+        'avs_zipcode' => $billing_address['postal_code'],
+      );
+      $mpg_avs_info = new mpgAvsInfo($avs_template);
+      $mpg_transaction->setAvsInfo($mpg_avs_info);
+    }
+  }
+
+  // Mask and log transaction object.
+  if (!empty($payment_method['settings']['log']['request'])) {
+    // We can't change original transaction details, so let's work on its copy.
+    $log = clone($mpg_transaction);
+    // Mask the credit card number, expiraton date and CVV code
+    // before saving it to the dblog.
+    if (!empty($log->txn['pan'])) {
+      $log->txn['pan'] = str_repeat('X', strlen($log->txn['pan']) - 4) . substr($log->txn['pan'], -4);
+    }
+    if (!empty($log->txn['expdate'])) {
+      $log->txn['expdate'] = str_repeat('X', strlen($log->txn['expdate']));
+    }
+    if (!empty($log->txn['cvd_value'])) {
+      $log->txn['cvd_value'] = str_repeat('X', strlen($log->txn['cvd_value']));
+    }
+    if (!empty($log->cvdInfo->params['cvd_value'])) {
+      $log->cvdInfo->params['cvd_value'] = str_repeat('X', strlen($log->cvdInfo->params['cvd_value']));
+    }
+
     watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !transaction', array(
       '@order_id' => $order->order_id,
       '@gateway' => $gateway,
       '@environment' => $environment,
-      '!transaction' => '<pre>' . check_plain(print_r($mpg_transaction, TRUE)) . '</pre>',
+      '!transaction' => '<pre>' . check_plain(print_r($log, TRUE)) . '</pre>',
     ), WATCHDOG_DEBUG);
   }
 
+  // Prepare Moneris request object and send it to their gateway.
   $mpg_request = new mpgRequest($mpg_transaction);
-
-  if ($payment_method['settings']['log']['request'] == 'request') {
-    watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !request', array(
-      '@order_id' => $order->order_id,
-      '@gateway' => $gateway,
-      '@environment' => $environment,
-      '!request' => '<pre>' . check_plain(print_r($mpg_request, TRUE)) . '</pre>',
-    ), WATCHDOG_DEBUG);
-  }
-
   $mpg_result = new mpgHttpsPost($store_id, $api_token, $mpg_request, $environment, $cacert_path);
-
-  if (!empty($payment_method['settings']['log']['response'])) {
-    watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !result', array(
-      '@order_id' => $order->order_id,
-      '@gateway' => $gateway,
-      '@environment' => $environment,
-      '!result' => '<pre>' . check_plain(print_r($mpg_result, TRUE)) . '</pre>',
-    ), WATCHDOG_DEBUG);
-  }
-
   $mpg_response = $mpg_result->getMpgResponse();
 
   if (!empty($payment_method['settings']['log']['response'])) {
@@ -335,14 +363,16 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     ), WATCHDOG_DEBUG, $transaction_link);
   }
 
+  // Let's keep only the juicy stuff.
   $response_data = $mpg_response->responseData;
 
   // Should we save full $mpg_response here, or is just $response_data enough?
   $transaction->payload[REQUEST_TIME]['responseData'] = $response_data;
 
+  // This tells us whether our transaction request succeeded or failed.
   $response_code = $response_data['ResponseCode'];
 
-  // cURL call failed.
+  // But first, let's check if cURL request hasn't failed by any chance?
   if ($curl_error = $mpg_result->getCurlError()) {
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
     $transaction->message = t('cURL error @error_no:<br />!error_msg', array(
@@ -350,10 +380,8 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
       '!error_msg' => str_replace("\n", '<br />', $curl_error['error_msg']),
     ));
     $transaction->payload[REQUEST_TIME]['curlResponse'] = $curl_error;
-
-    drupal_set_message(t('We encountered an error processing your transaction. Please contact us to resolve the issue.'), 'error');
   }
-  // Request was incomplete.
+  // cURL request succeeded, but its content was incomplete.
   elseif ($response_code == 'null') {
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
     $transaction->message = $response_data['Message'];
@@ -375,7 +403,18 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     }
 
     $transaction->remote_id = $response_data['TransID'];
+
+    // Build transaction message from main status message and all validators.
     $transaction->message = $response_data['Message'];
+    if (!empty($response_data['CvdResultCode']) && $response_data['CvdResultCode'] != 'null') {
+      $transaction->message .= '<br />' . t('CVD result: @result', array('@result' => commerce_moneris_api_get_cvd_response($response_data['CvdResultCode'])));
+    }
+    if (!empty($response_data['AvsResultCode']) && $response_data['AvsResultCode'] != 'null') {
+      $transaction->message .= '<br />' . t('AVS result: @result', array('@result' => commerce_moneris_api_get_avs_response($response_data['AvsResultCode'], $response_data['CardType'])));
+    }
+    if (!empty($response_data['CavvResultCode']) && $response_data['CavvResultCode'] != 'null') {
+      $transaction->message .= '<br />' . t('CAVV result: @result', array('@result' => commerce_moneris_api_get_cavv_response($response_data['CavvResultCode'])));
+    }
   }
 
   $transaction->remote_status = $response_data['ResponseCode'];
@@ -383,9 +422,170 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   commerce_payment_transaction_save($transaction);
 
   if ($transaction->status == COMMERCE_PAYMENT_STATUS_FAILURE) {
-    drupal_set_message(t('We received an error processing your transaction. Please enter your information again or try a different card.'), 'error');
+    drupal_set_message(t('We encountered an error processing your transaction. Please enter your information again or try a different card.'), 'error');
     return FALSE;
   }
 
   return TRUE;
+}
+
+/**
+ * Returns CVD indicator value description for specific CVD response code.
+ *
+ * @param string $cvd_response_code
+ *   CVD response code received in response from Moneris API.
+ *
+ * @return string
+ *   CVD indicator value description.
+ */
+function commerce_moneris_api_get_cvd_indicator($cvd_response_code) {
+  switch (substr($cvd_response_code, 0, 1)) {
+    case '0': return t('CVD value is deliberately bypassed or is not provided by the merchant.');
+    case '1': return t('CVD value is present.');
+    case '2': return t('CVD value is on the card, but is illegible.');
+    case '9': return t('Cardholder states that the card has no CVD imprint.');
+  }
+  return t('Unknown CVD indicator.');
+}
+
+/**
+ * Returns description for specific CVD response code.
+ *
+ * @param $cvd_response_code
+ *   CVD code received in response from Moneris API.
+ *
+ * @return string
+ *   CVD response code description.
+ */
+function commerce_moneris_api_get_cvd_response($cvd_response_code) {
+  switch (substr($cvd_response_code, 1)) {
+    case 'M': return t('Match');
+    case 'Y': return t('Match for AmEx');
+    case 'N': return t('No Match');
+    case 'P': return t('Not Processed');
+    case 'S': return t('CVD should be on the card, but Merchant has indicated that CVD is not present');
+    case 'R': return t('Retry for AmEx');
+    case 'U': return t('Issuer is not a CVD participant');
+  }
+  return t('Invalid Response Code');
+}
+
+/**
+ * Returns description for specific AVS response code.
+ *
+ * @param string $avs_response_code
+ *   AVS code received in response from Moneris API.
+ * @param string $card_type
+ *   Card type code received in response from Moneris API.
+ *
+ * @return string
+ *   AVS response code description.
+ */
+function commerce_moneris_api_get_avs_response($avs_response_code, $card_type) {
+  switch ($card_type) {
+    // AVS response codes for Visa, Discover and JCB.
+    case 'V':
+    // case Discover ?
+    case 'C1':
+      switch ($avs_response_code) {
+        case 'A': return t('Address matches, ZIP does not. Acquirer rights not implied.');
+        case 'B': return t('Street addresses match. Zip code not verified due to incompatible formats. (Acquirer sent both street address and zip code.)');
+        case 'C': return t('Street addresses not verified due to incompatible formats. (Acquirer sent both street address and zip code.)');
+        case 'D': return t('Street addresses and zip codes match.');
+        case 'F': return t('Street address and zip code match. Applies to U.K. only');
+        case 'G': return t('Address information not verified for international transaction. Issuer is not an AVS participant, or AVS data was present in the request but issuer did not return an AVS result, or Visa performs AVS on behalf of the issuer and there was no address record on file for this account.');
+        case 'I': return t('Address information not verified.');
+        case 'M': return t('Street address and zip code match.');
+        case 'N': return t('No match. Acquirer sent postal/ZIP code only, or street address only, or both zip code and street address. Also used when acquirer requests AVS but sends no AVS data.');
+        case 'P': return t('Zip code match. Acquirer sent both zip code and street address but street address not verified due to incompatible formats.');
+        case 'R': return t('Retry: system unavailable or timed out. Issuer ordinarily performs AVS but was unavailable. The code R is used by Visa when issuers are unavailable. Issuers should refrain from using this code.');
+        case 'U': return t('Address not verified for domestic transaction. Issuer is not an AVS participant, or AVS data was present in the request but issuer did not return an AVS result, or Visa performs AVS on behalf of the issuer and there was no address record on file for this account.');
+        case 'W': return t('Not applicable. If present, replaced with ‘Z’ by Visa. Available for U.S. issuers only.');
+        case 'Y': return t('Street address and zip code match.');
+        case 'Z': return t('Postal/Zip matches; street address does not match or street address not included in request.');
+      }
+    // AVS response codes for MasterCard.
+    case 'M':
+      switch ($avs_response_code) {
+        case 'A': return t('Address matches, zip code does not.');
+        case 'N': return t('Neither address nor zip code matches.');
+        case 'R': return t('Retry; system unable to process.');
+        case 'S': return t('AVS currently not supported.');
+        case 'U': return t('No data from Issuer/Authorization system.');
+        case 'W': return t('For U.S. Addresses, nine-digit zip code matches, address does not; for address outside the U.S. postal code matches, address does not.');
+        case 'X': return t('For U.S. addresses, nine-digit zip code and addresses matches; for addresses outside the U.S., postal code and address match.');
+        case 'Y': return t('For U.S. addresses, five-digit zip code and address matches.');
+        case 'Z': return t('For U.S. addresses, five digit zip code matches, address does not.');
+      }
+    // AVS response codes for American Express.
+    case 'AX':
+      switch ($avs_response_code) {
+        case 'A': return t('Billing address matches, zip code does not');
+        case 'D': return t('Customer name incorrect, zip code matches');
+        case 'E': return t('Customer name incorrect, billing address and zip code match');
+        case 'F': return t('Customer name incorrect, billing address matches');
+        case 'K': return t('Customer name matches');
+        case 'L': return t('Customer name and zip code match');
+        case 'M': return t('Customer name, billing address, and zip code match');
+        case 'N': return t('Billing address and zip code do not match');
+        case 'O': return t('Customer name and billing address match');
+        case 'R': return t('System unavailable; retry');
+        case 'S': return t('AVS not currently supported');
+        case 'U': return t('Information is unavailable');
+        case 'W': return t('Customer name, billing address, and zip code are all incorrect');
+        case 'Y': return t('Billing address and zip code both match');
+        case 'Z': return t('Zip code matches, billing address does not');
+      }
+  }
+  return t('AVS code not recognized.');
+}
+
+/**
+ * Returns description for specific CAVV response code.
+ *
+ * @param $cavv_response_code
+ *   CAVV code received in response from Moneris API.
+ *
+ * @return string
+ *   CAVV response code description.
+ */
+function commerce_moneris_api_get_cavv_response($cavv_response_code) {
+  switch ($cavv_response_code) {
+    case '0': return t('CAVV authentication results invalid.');
+    case '1': return t('CAVV failed validation; authentication');
+    case '2': return t('CAVV passed validation; authentication');
+    case '3': return t('CAVV passed validation; attempt');
+    case '4': return t('CAVV failed validation; attempt');
+    case '7': return t('CAVV failed validation; attempt (US issued cards only)');
+    case '8': return t('CAVV passed validation; attempt (US issued cards only');
+    case '9': return t('= CAVV failed validation; attempt (US issued cards only)');
+    case 'A': return t('CAVV passed validation; attempt (US issued cards only)');
+    case 'B': return t('CAVV passed validation; information only, no liability shift');
+  }
+  return t('CAVV code not recognized.');
+}
+
+/**
+ * Returns merchant meaning for specific CAVV response code.
+ *
+ * @param $cavv_response_code
+ *   CAVV code received in response from Moneris API.
+ *
+ * @return string
+ *   CAVV response code merchant meaning.
+ */
+function commerce_moneris_api_get_cavv_meaning($cavv_response_code) {
+  switch ($cavv_response_code) {
+    case '0': return t('For this transaction you may not receive protection from chargebacks as a result of using VBV as the CAVV was considered invalid at the time the financial transaction was processed. Please check that you are following the VBV process correctly and passing the correct data in our transactions.');
+    case '1': return t('Provided that you have implemented the VBV process correctly the liability for this transaction should remain with the Issuer for chargeback reason codes covered by Verified by Visa.');
+    case '2': return t('The CAVV was confirmed as part of the financial transaction. This transaction is a fully authenticated VBV transaction (ECI 5)');
+    case '3': return t('The CAVV was confirmed as part of the financial transaction. This transaction is an attempted VBV transaction (ECI 6)');
+    case '4': return t('Provided that you have implemented the VBV process correctly the liability for this transaction should remain with the Issuer for chargeback reason codes covered by Verified by Visa.');
+    case '7': return t('Please check that you are following the VBV process correctly and passing the correct data in our transactions. Provided that you have implemented the VBV process correctly the liability for this transaction should be the same as an attempted transaction (ECI 6)');
+    case '8': return t('The CAVV was confirmed as part of the financial transaction. This transaction is an attempted VBV transaction (ECI 6)');
+    case '9': return t('Please check that you are following the VBV process correctly and passing the correct data in our transactions. Provided that you have implemented the VBV process correctly the liability for this transaction should be the same as an attempted transaction (ECI 6)');
+    case 'A': return t('The CAVV was confirmed as part of the financial transaction. This transaction is an attempted VBV transaction (ECI 6)');
+    case 'B': return t('The CAVV was confirmed as part of the financial transaction. However, this transaction does qualify for the liability shift. Treat this transaction the same as an ECI 7.');
+  }
+  return t('CAVV code not recognized.');
 }
