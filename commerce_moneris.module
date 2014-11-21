@@ -5,7 +5,6 @@
  * Provides moneris payment method for Drupal Commerce.
  */
 
-define('COMMERCE_PAYMENT_STATUS_MONERIS_INITIATED', 'INITIATED');
 define('COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY', 'PREAUTH');
 
 /**
@@ -13,13 +12,6 @@ define('COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY', 'PREAUTH');
  */
 function commerce_moneris_commerce_payment_transaction_status_info() {
   $statuses = array();
-
-  $statuses[COMMERCE_PAYMENT_STATUS_MONERIS_INITIATED] = array(
-    'status' => COMMERCE_PAYMENT_STATUS_MONERIS_INITIATED,
-    'title' => t('Initiated'),
-    'icon' => drupal_get_path('module', 'commerce_payment') . '/theme/icon-pending.png',
-    'total' => FALSE,
-  );
 
   $statuses[COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY] = array(
     'status' => COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY,

@@ -210,7 +210,7 @@ function commerce_moneris_api_submit_form_validate($payment_method, $pane_form, 
  * Payment method callback: checkout form submission.
  */
 function commerce_moneris_api_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
-  return commerce_moneris_api_transaction($payment_method, $order, $charge, $pane_values);
+  return commerce_moneris_api_purchase_transaction($payment_method, $order, $charge, $pane_values);
 }
 
 /**
@@ -226,21 +226,17 @@ function commerce_moneris_api_submit_form_submit($payment_method, $pane_form, $p
  * @param array $values
  *   The values submitted by user.
  */
-function commerce_moneris_api_transaction($payment_method, $order, $charge, $values) {
-  // Get the configurations.
+function commerce_moneris_api_purchase_transaction($payment_method, $order, $charge, $values) {
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
-  $store_id = $payment_method['settings'][$gateway][$environment]['store_id'];
-  $api_token = $payment_method['settings'][$gateway][$environment]['api_token'];
   $transaction_type = $payment_method['settings'][$gateway]['txn_type'];
-  $cacert_path = (!empty($payment_method['settings'][$gateway]['extra']['ssl'])) ? $payment_method['settings'][$gateway]['curl_certificate_path'] : '';
 
   // Save initial transaction.
   $transaction = commerce_payment_transaction_new('commerce_moneris_api', $order->order_id);
   $transaction->instance_id = $payment_method['instance_id'];
   $transaction->amount = $charge['amount'];
   $transaction->currency_code = $charge['currency_code'];
-  $transaction->status = COMMERCE_PAYMENT_STATUS_MONERIS_INITIATED;
+  $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
   $transaction->payload[REQUEST_TIME] = array(
     'gateway' => $gateway,
     'server' => $environment,
@@ -291,6 +287,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   // Load native Moneris library relevant to selected gateway.
   module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
 
+  // Create Moneris-compatible transaction request object.
   $mpg_transaction = new mpgTransaction($txn_array);
 
   // eFraud: CVD (Card Validation Digits) verification.
@@ -321,6 +318,33 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     }
   }
 
+  // Send the transaction request to Moneris.
+  $mpg_response = commerce_moneris_api_request($mpg_transaction, $payment_method, $order);
+
+  // Process the response and update its relevant transaction accordingly.
+  return commerce_moneris_api_process_response($mpg_response, $transaction);
+}
+
+/**
+ * Posts data to Moneris API.
+ *
+ * @param object $mpg_transaction
+ *   The mpgTransaction object which mpgRequest will be created from.
+ * @param array $payment_method
+ *   The payment method instance object used to charge this payment.
+ * @param object $order
+ *   The order object the payment applies to.
+ */
+function commerce_moneris_api_request($mpg_transaction, $payment_method, $order) {
+  $gateway = $payment_method['settings']['gateway'];
+  $environment = $payment_method['settings']['server'];
+  $store_id = $payment_method['settings'][$gateway][$environment]['store_id'];
+  $api_token = $payment_method['settings'][$gateway][$environment]['api_token'];
+  $cacert_path = (!empty($payment_method['settings'][$gateway]['extra']['ssl'])) ? $payment_method['settings'][$gateway]['curl_certificate_path'] : '';
+
+  // Load native Moneris library relevant to selected gateway.
+  module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
+
   // Mask and log transaction object.
   if (!empty($payment_method['settings']['log']['request'])) {
     // We can't change original transaction details, so let's work on its copy.
@@ -339,7 +363,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     if (!empty($log->cvdInfo->params['cvd_value'])) {
       $log->cvdInfo->params['cvd_value'] = str_repeat('X', strlen($log->cvdInfo->params['cvd_value']));
     }
-    commerce__moneris_api_log('<pre>' . check_plain(print_r($log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    commerce_moneris_api_log('request: <pre>' . check_plain(print_r($log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
   }
 
   // Prepare Moneris request object and send it to their gateway.
@@ -347,18 +371,40 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   $mpg_result = new mpgHttpsPost($store_id, $api_token, $mpg_request, $environment, $cacert_path);
   $mpg_response = $mpg_result->getMpgResponse();
 
+  // Add original cURL response to received mpgResponse object.
+  // Including cURL error if any.
+
+  // Log the full response.
   if (!empty($payment_method['settings']['log']['response'])) {
-    $transaction_link = l(t('view transaction'), 'admin/commerce/orders/' . $order->order_id . '/payment/' . $transaction->transaction_id . '/view');
-    commerce__moneris_api_log('<pre>' . check_plain(print_r($mpg_response, TRUE)) . '</pre>', $order->order_id, $gateway, $environment, $transaction_link);
+    // Log the cURL response.
+    $curl_log = array('response' => $mpg_result->getCurlResponse());
+    if ($curl_error = $mpg_result->getCurlError()) {
+      $curl_log += $curl_error;
+    }
+    commerce_moneris_api_log('cURL response: <pre>' . check_plain(print_r($curl_log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    // Log the gateway response.
+    commerce_moneris_api_log('Moneris response: <pre>' . check_plain(print_r($mpg_response->responseData, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
   }
 
-  // Let's keep only the juicy stuff.
-  $response_data = $mpg_response->responseData;
+  return $mpg_response->responseData;
+}
 
-  // Should we save full $mpg_response here, or is just $response_data enough?
-  $transaction->payload[REQUEST_TIME]['responseData'] = $response_data;
+/**
+ * Processed the response received from Moneris.
+ *
+ * @param array $response_data
+ *   Moneris mpgResponse->response_data array.
+ * @param array $transaction
+ *   The commerce payment transaction.
+ *
+ * @return bool
+ *   Boolean indicating whether the transaction was successful or not.
+ */
+function commerce_moneris_api_process_response($response_data, $transaction) {
+  // Log received response.
+  $transaction->payload[REQUEST_TIME] = $response_data;
 
-  // eSelectPlus Reponse Handling guide says that first step of making sure
+  // eSelectPlus Response Handling guide says that first step of making sure
   // the transaction was successful is checking values of Complete, TimedOut
   // ResponseCode and Message parameters.
   if (
@@ -367,18 +413,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     || empty($response_data['ResponseCode']) || $response_data['ResponseCode'] == 'null'
   ) {
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-    // Was that cURL call error?
-    if ($curl_error = $mpg_result->getCurlError()) {
-      $transaction->message = t('cURL error @error_no:<br />!error_msg', array(
-        '@error_no' => $curl_error['error_no'],
-        '!error_msg' => str_replace("\n", '<br />', $curl_error['error_msg']),
-      ));
-      $transaction->payload[REQUEST_TIME]['curlResponse'] = $curl_error;
-    }
-    // cURL request succeeded, we've just received an error from the gateway.
-    else {
-      $transaction->message = $response_data['Message'];
-    }
+    $transaction->message = $response_data['Message'];
   }
   // Transaction was processed successfully
   // (although still might have been declined).
@@ -399,7 +434,10 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     $transaction->remote_id = $response_data['TransID'];
 
     // Build transaction message from main status message and all validators.
-    $transaction->message = $response_data['Message'];
+    $transaction->message = t('@txn_type: !message', array(
+      '@txn_type' => commerce_moneris_api_get_transaction_type($response_data['TransType']),
+      '!message' => $response_data['Message'],
+    ));
     // Add eFraud information if available.
     if (!empty($response_data['CvdResultCode']) && $response_data['CvdResultCode'] != 'null') {
       $transaction->message .= '<br />' . t('CVD result: @result', array('@result' => commerce_moneris_api_get_cvd_response($response_data['CvdResultCode'])));
@@ -436,8 +474,8 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
  */
 function commerce_moneris_api_get_transaction_type($trans_type) {
   switch ($trans_type) {
-    case '00': return 'purchase';
-    case '01': return 'preauth';
+    case '00': return 'Purchase';
+    case '01': return 'PreAuth';
   }
 }
 
@@ -616,7 +654,7 @@ function commerce_moneris_api_get_cavv_meaning($cavv_response_code) {
  * @param string|null $link
  *   Link to relevant page providing more information.
  */
-function commerce__moneris_api_log($message, $order_id, $gateway, $environment, $link = NULL) {
+function commerce_moneris_api_log($message, $order_id, $gateway, $environment, $link = NULL) {
   watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !message', array(
     '@order_id' => $order_id,
     '@gateway' => $gateway,
