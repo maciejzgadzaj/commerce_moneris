@@ -339,13 +339,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
     if (!empty($log->cvdInfo->params['cvd_value'])) {
       $log->cvdInfo->params['cvd_value'] = str_repeat('X', strlen($log->cvdInfo->params['cvd_value']));
     }
-
-    watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !transaction', array(
-      '@order_id' => $order->order_id,
-      '@gateway' => $gateway,
-      '@environment' => $environment,
-      '!transaction' => '<pre>' . check_plain(print_r($log, TRUE)) . '</pre>',
-    ), WATCHDOG_DEBUG);
+    commerce__moneris_api_log('<pre>' . check_plain(print_r($log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
   }
 
   // Prepare Moneris request object and send it to their gateway.
@@ -355,12 +349,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
 
   if (!empty($payment_method['settings']['log']['response'])) {
     $transaction_link = l(t('view transaction'), 'admin/commerce/orders/' . $order->order_id . '/payment/' . $transaction->transaction_id . '/view');
-    watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !response', array(
-      '@order_id' => $order->order_id,
-      '@gateway' => $gateway,
-      '@environment' => $environment,
-      '!response' => '<pre>' . check_plain(print_r($mpg_response, TRUE)) . '</pre>',
-    ), WATCHDOG_DEBUG, $transaction_link);
+    commerce__moneris_api_log('<pre>' . check_plain(print_r($mpg_response, TRUE)) . '</pre>', $order->order_id, $gateway, $environment, $transaction_link);
   }
 
   // Let's keep only the juicy stuff.
@@ -588,4 +577,27 @@ function commerce_moneris_api_get_cavv_meaning($cavv_response_code) {
     case 'B': return t('The CAVV was confirmed as part of the financial transaction. However, this transaction does qualify for the liability shift. Treat this transaction the same as an ECI 7.');
   }
   return t('CAVV code not recognized.');
+}
+
+/**
+ * Logs Moneris API-specific debug message.
+ *
+ * @param string $message
+ *   The message to be added to the log.
+ * @param int $order_id
+ *   The order object.
+ * @param string $gateway
+ *   The gateway the request was sent to.
+ * @param string $environment
+ *   The environment being used.
+ * @param string|null $link
+ *   Link to relevant page providing more information.
+ */
+function commerce__moneris_api_log($message, $order_id, $gateway, $environment, $link = NULL) {
+  watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !message', array(
+    '@order_id' => $order_id,
+    '@gateway' => $gateway,
+    '@environment' => $environment,
+    '!message' => $message,
+  ), WATCHDOG_DEBUG, $link);
 }
