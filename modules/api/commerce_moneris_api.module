@@ -358,29 +358,34 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
   // Should we save full $mpg_response here, or is just $response_data enough?
   $transaction->payload[REQUEST_TIME]['responseData'] = $response_data;
 
-  // This tells us whether our transaction request succeeded or failed.
-  $response_code = $response_data['ResponseCode'];
-
-  // But first, let's check if cURL request hasn't failed by any chance?
-  if ($curl_error = $mpg_result->getCurlError()) {
+  // eSelectPlus Reponse Handling guide says that first step of making sure
+  // the transaction was successful is checking values of Complete, TimedOut
+  // ResponseCode and Message parameters.
+  if (
+    empty($response_data['Complete']) || $response_data['Complete'] != 'true'
+    || empty($response_data['TimedOut']) || $response_data['TimedOut'] != 'false'
+    || empty($response_data['ResponseCode']) || $response_data['ResponseCode'] == 'null'
+  ) {
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-    $transaction->message = t('cURL error @error_no:<br />!error_msg', array(
-      '@error_no' => $curl_error['error_no'],
-      '!error_msg' => str_replace("\n", '<br />', $curl_error['error_msg']),
-    ));
-    $transaction->payload[REQUEST_TIME]['curlResponse'] = $curl_error;
-  }
-  // cURL request succeeded, but its content was incomplete.
-  elseif ($response_code == 'null') {
-    $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
-    $transaction->message = $response_data['Message'];
+    // Was that cURL call error?
+    if ($curl_error = $mpg_result->getCurlError()) {
+      $transaction->message = t('cURL error @error_no:<br />!error_msg', array(
+        '@error_no' => $curl_error['error_no'],
+        '!error_msg' => str_replace("\n", '<br />', $curl_error['error_msg']),
+      ));
+      $transaction->payload[REQUEST_TIME]['curlResponse'] = $curl_error;
+    }
+    // cURL request succeeded, we've just received an error from the gateway.
+    else {
+      $transaction->message = $response_data['Message'];
+    }
   }
   // Transaction was processed successfully
   // (although still might have been declined).
   else {
     // Response code will be returned as a string like '027', so we need
     // to convert it to a proper integer first before checking its value.
-    $response_code = (int) $response_code;
+    $response_code = (int) $response_data['ResponseCode'];
 
     // Transaction was approved.
     if ($response_code >= 0 && $response_code <= 49) {
@@ -395,6 +400,7 @@ function commerce_moneris_api_transaction($payment_method, $order, $charge, $val
 
     // Build transaction message from main status message and all validators.
     $transaction->message = $response_data['Message'];
+    // Add eFraud information if available.
     if (!empty($response_data['CvdResultCode']) && $response_data['CvdResultCode'] != 'null') {
       $transaction->message .= '<br />' . t('CVD result: @result', array('@result' => commerce_moneris_api_get_cvd_response($response_data['CvdResultCode'])));
     }
