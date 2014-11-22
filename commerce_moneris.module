@@ -94,11 +94,11 @@ function commerce_moneris_transaction_types($gateway_id, $translated = FALSE) {
   $transaction_types = array(
     'ca' => array(
       'purchase' => t('Purchase'),
-//      'preauth' => t('PreAuth'),
+      'preauth' => t('PreAuth'),
     ),
     'us' => array(
       'us_purchase' => t('Purchase'),
-//      'us_preauth' => t('PreAuth'),
+      'us_preauth' => t('PreAuth'),
     ),
   );
 
