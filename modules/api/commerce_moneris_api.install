@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Ensures users have cURL enabled prior to installation.
+ */
+
+/**
+ * Implementation of hook_requirements().
+ */
+function commerce_moneris_api_requirements($phase) {
+  // Skip the requirements check if SimpleTest is installed to avoid multiple
+  // cURL rows.
+  if (module_exists('simpletest')) {
+    return;
+  }
+
+  $t = get_t();
+
+  $has_curl = function_exists('curl_init');
+
+  $requirements['commerce_moneris_api_curl'] = array(
+    'title' => $t('Moneris API'),
+    'value' => $has_curl ? $t('cURL library enabled') : $t('cURL library not found'),
+  );
+
+  if (!$has_curl) {
+    $requirements['commerce_moneris_api_curl'] += array(
+      'severity' => REQUIREMENT_ERROR,
+      'description' => $t("Moneris API requires the PHP <a href='!curl_url'>cURL</a> library.", array('!curl_url' => 'http://php.net/manual/en/curl.setup.php')),
+    );
+  }
+
+  return $requirements;
+}
