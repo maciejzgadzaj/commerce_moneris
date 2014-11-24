@@ -180,17 +180,8 @@ function commerce_moneris_api_reverse_form($form, &$form_state, $order, $transac
   $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
   $form_state['payment_method'] = $payment_method;
 
-  $balance = commerce_payment_order_balance($order);
-
-  if ($balance['amount'] > 0 && $balance['amount'] < $transaction->amount) {
-    $default_amount = $balance['amount'];
-  }
-  else {
-    $default_amount = $transaction->amount;
-  }
-
   // Convert the price amount to a user friendly decimal value.
-  $form_state['amount'] = number_format(commerce_currency_amount_to_decimal($default_amount, $transaction->currency_code), 2, '.', '');
+  $form_state['amount'] = number_format(commerce_currency_amount_to_decimal($transaction->amount, $transaction->currency_code), 2, '.', '');
 
   $form['markup'] = array(
     '#markup' => t('Are you sure that you want to reverse this authorisation?'),
