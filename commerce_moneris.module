@@ -68,31 +68,26 @@ function commerce_moneris_gateways($translated = FALSE) {
 }
 
 /**
- * Returns supported transaction types for a specified gateway (country).
+ * Logs Moneris API-specific debug message.
  *
- * @param string $gateway_id
- *   A gateway ID indicating which country to return transaction types for.
- * @param bool $translated
- *   A boolean indicating whether returned strings should be translated or not.
- *
- * @return array
- *   An array of available transaction types for a specified gateway (country).
+ * @param string $module
+ *   The module initiating the logging.
+ * @param string $message
+ *   The message to be added to the log.
+ * @param int $order_id
+ *   The order object.
+ * @param string $gateway
+ *   The gateway the request was sent to.
+ * @param string $environment
+ *   The environment being used.
+ * @param string|null $link
+ *   Link to relevant page providing more information.
  */
-function commerce_moneris_transaction_types($gateway_id, $translated = FALSE) {
-  $transaction_types = array(
-    'ca' => array(
-      'purchase' => t('Purchase'),
-      'preauth' => t('PreAuth'),
-    ),
-    'us' => array(
-      'us_purchase' => t('Purchase'),
-      'us_preauth' => t('PreAuth'),
-    ),
-  );
-
-  if ($translated) {
-    $transaction_types[$gateway_id] = array_map('t', $transaction_types[$gateway_id]);
-  }
-
-  return $transaction_types[$gateway_id];
+function commerce_moneris_log($module, $message, $order_id, $gateway, $environment, $link = NULL) {
+  watchdog($module, '@order_id-@gateway-@environment: !message', array(
+    '@order_id' => $order_id,
+    '@gateway' => $gateway,
+    '@environment' => $environment,
+    '!message' => $message,
+  ), WATCHDOG_DEBUG, $link);
 }

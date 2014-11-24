@@ -441,7 +441,7 @@ function commerce_moneris_api_settings_form($settings = array()) {
     $form[$gateway_id]['txn_type'] = array(
       '#type' => 'radios',
       '#title' => t('Default @gateway credit card transaction type', array('@gateway' => $gateway)),
-      '#options' => commerce_moneris_transaction_types($gateway_id),
+      '#options' => commerce_moneris_api_get_transaction_types($gateway_id),
       '#default_value' => $settings[$gateway_id]['txn_type'],
       '#states' => array(
         'visible' => array(
@@ -518,7 +518,7 @@ function commerce_moneris_api_settings_default() {
       $default_settings[$gateway_id][$environment_id]['api_token'] = '';
     }
     // For default transaction type we return key of the first defined type.
-    $transaction_types = commerce_moneris_transaction_types($gateway_id);
+    $transaction_types = commerce_moneris_api_get_transaction_types($gateway_id);
     reset($transaction_types);
     $default_settings[$gateway_id]['txn_type'] = key($transaction_types);
     $default_settings[$gateway_id]['extra'] = array(
@@ -962,7 +962,7 @@ function commerce_moneris_api_request($mpg_transaction, $payment_method, $order)
     if (!empty($log->cvdInfo->params['cvd_value'])) {
       $log->cvdInfo->params['cvd_value'] = str_repeat('X', strlen($log->cvdInfo->params['cvd_value']));
     }
-    commerce_moneris_api_log('request: <pre>' . check_plain(print_r($log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    commerce_moneris_log('commerce_moneris_api', 'request: <pre>' . check_plain(print_r($log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
   }
 
   // Prepare Moneris request object and send it to their gateway.
@@ -980,9 +980,9 @@ function commerce_moneris_api_request($mpg_transaction, $payment_method, $order)
     if ($curl_error = $mpg_result->getCurlError()) {
       $curl_log += $curl_error;
     }
-    commerce_moneris_api_log('cURL response: <pre>' . check_plain(print_r($curl_log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    commerce_moneris_log('commerce_moneris_api', 'cURL response: <pre>' . check_plain(print_r($curl_log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
     // Log the gateway response.
-    commerce_moneris_api_log('Moneris response: <pre>' . check_plain(print_r($mpg_response->responseData, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    commerce_moneris_log('commerce_moneris_api', 'Moneris response: <pre>' . check_plain(print_r($mpg_response->responseData, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
   }
 
   return $mpg_response->responseData;
@@ -1060,6 +1060,36 @@ function commerce_moneris_api_response_process($response_data, $transaction) {
   }
 
   return TRUE;
+}
+
+/**
+ * Returns supported transaction types for a specified gateway (country).
+ *
+ * @param string $gateway_id
+ *   A gateway ID indicating which country to return transaction types for.
+ * @param bool $translated
+ *   A boolean indicating whether returned strings should be translated or not.
+ *
+ * @return array
+ *   An array of available transaction types for a specified gateway (country).
+ */
+function commerce_moneris_api_get_transaction_types($gateway_id, $translated = FALSE) {
+  $transaction_types = array(
+    COMMERCE_MONERIS_USA => array(
+      'us_purchase' => t('Purchase'),
+      'us_preauth' => t('PreAuth'),
+    ),
+    COMMERCE_MONERIS_CANADA => array(
+      'purchase' => t('Purchase'),
+      'preauth' => t('PreAuth'),
+    ),
+  );
+
+  if ($translated) {
+    $transaction_types[$gateway_id] = array_map('t', $transaction_types[$gateway_id]);
+  }
+
+  return $transaction_types[$gateway_id];
 }
 
 /**
@@ -1269,27 +1299,4 @@ function commerce_moneris_api_get_cavv_meaning($cavv_response_code) {
     case 'B': return t('The CAVV was confirmed as part of the financial transaction. However, this transaction does qualify for the liability shift. Treat this transaction the same as an ECI 7.');
   }
   return t('CAVV code not recognised.');
-}
-
-/**
- * Logs Moneris API-specific debug message.
- *
- * @param string $message
- *   The message to be added to the log.
- * @param int $order_id
- *   The order object.
- * @param string $gateway
- *   The gateway the request was sent to.
- * @param string $environment
- *   The environment being used.
- * @param string|null $link
- *   Link to relevant page providing more information.
- */
-function commerce_moneris_api_log($message, $order_id, $gateway, $environment, $link = NULL) {
-  watchdog('commerce_moneris_api', '@order_id-@gateway-@environment: !message', array(
-    '@order_id' => $order_id,
-    '@gateway' => $gateway,
-    '@environment' => $environment,
-    '!message' => $message,
-  ), WATCHDOG_DEBUG, $link);
 }
