@@ -525,8 +525,8 @@ function commerce_moneris_api_settings_default() {
       'avs' => 'avs',
       'cvd' => 'cvd',
       'ssl' => FALSE,
-      'curl_certificate_path' => '',
     );
+    $default_settings[$gateway_id]['curl_certificate_path'] = '';
   }
   return $default_settings;
 }
