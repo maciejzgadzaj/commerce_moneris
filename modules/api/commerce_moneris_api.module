@@ -508,7 +508,7 @@ function commerce_moneris_api_settings_form($settings = array()) {
  */
 function commerce_moneris_api_settings_default() {
   $default_settings = array(
-    'gateway' => 'us',
+    'gateway' => COMMERCE_MONERIS_USA,
     'server' => 'test',
     'log' => array(),
   );
@@ -709,7 +709,7 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount)
 
   // Create transaction data.
   $txn_array = array(
-    'type' => ($gateway == 'us') ? 'us_refund' : 'refund',
+    'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_refund' : 'refund',
     'order_id' => $purchase_transaction->payload['unique_order_id'],
     'amount' => number_format($amount, 2, '.', ''),
     'txn_number' => $purchase_transaction->remote_id,
@@ -771,7 +771,7 @@ function commerce_moneris_api_transaction_capture($purchase_transaction, $amount
 
   // Create transaction data.
   $txn_array = array(
-    'type' => ($gateway == 'us') ? 'us_completion' : 'completion',
+    'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_completion' : 'completion',
     'order_id' => $purchase_transaction->payload['unique_order_id'],
     'comp_amount' => number_format($amount, 2, '.', ''),
     'txn_number' => $purchase_transaction->remote_id,
@@ -836,7 +836,7 @@ function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount
 
   // Create transaction data.
   $txn_array = array(
-    'type' => ($gateway == 'us') ? 'us_completion' : 'completion',
+    'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_completion' : 'completion',
     'order_id' => $purchase_transaction->payload['unique_order_id'],
     'comp_amount' => '0.00',
     'txn_number' => $purchase_transaction->remote_id,
@@ -899,7 +899,7 @@ function commerce_moneris_api_transaction_reauth($preauth_transaction, $amount) 
 
   // Create transaction data.
   $txn_array = array(
-    'type' => ($gateway == 'us') ? 'us_reauth' : 'reauth',
+    'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_reauth' : 'reauth',
     'order_id' => $unique_order_id,
     'orig_order_id' => $preauth_transaction->payload['unique_order_id'],
     'txn_number' => $preauth_transaction->remote_id,

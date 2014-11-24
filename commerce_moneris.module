@@ -5,23 +5,11 @@
  * Provides moneris payment method for Drupal Commerce.
  */
 
-define('COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY', 'PREAUTH');
+define('COMMERCE_MONERIS_CANADA', 'ca');
+define('COMMERCE_MONERIS_USA', 'us');
 
-/**
- * Implements hook_commerce_payment_transaction_status_info().
- */
-function commerce_moneris_commerce_payment_transaction_status_info() {
-  $statuses = array();
-
-  $statuses[COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY] = array(
-    'status' => COMMERCE_PAYMENT_STATUS_MONERIS_PREAUTH_ONLY,
-    'title' => t('Pre-authorized'),
-    'icon' => drupal_get_path('module', 'commerce_payment') . '/theme/icon-success.png',
-    'total' => FALSE,
-  );
-
-  return $statuses;
-}
+define('COMMERCE_MONERIS_PRODUCTION', 'prod');
+define('COMMERCE_MONERIS_TEST', 'test');
 
 /**
  * Implements hook_permission().
@@ -46,8 +34,8 @@ function commerce_moneris_permission() {
  */
 function commerce_moneris_environments($translated = FALSE) {
   $environments = array(
-    'test' => 'Test',
-    'prod' => 'Production',
+    COMMERCE_MONERIS_TEST => 'Test',
+    COMMERCE_MONERIS_PRODUCTION => 'Production',
   );
 
   if ($translated) {
@@ -68,8 +56,8 @@ function commerce_moneris_environments($translated = FALSE) {
  */
 function commerce_moneris_gateways($translated = FALSE) {
   $gateways = array(
-    'ca' => t('Canada'),
-    'us' => t('US'),
+    COMMERCE_MONERIS_CANADA => t('Canada'),
+    COMMERCE_MONERIS_USA => t('US'),
   );
 
   if ($translated) {
