@@ -103,28 +103,34 @@ function commerce_moneris_api_capture_form($form, &$form_state, $order, $transac
   $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
   $form_state['payment_method'] = $payment_method;
 
-  $balance = commerce_payment_order_balance($order);
-
-  if ($balance['amount'] > 0 && $balance['amount'] < $transaction->amount) {
-    $default_amount = $balance['amount'];
+  $conditions = array(
+    'order_id' => $order->order_id,
+    'payment_method' => $transaction->payment_method,
+    'instance_id' => $transaction->instance_id,
+    'remote_status' => COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
+    'status' => COMMERCE_PAYMENT_STATUS_SUCCESS,
+  );
+  $captured_amount = 0;
+  foreach (commerce_payment_transaction_load_multiple(array(), $conditions) as $capture_transaction) {
+    if ($capture_transaction->payload['related_order_id'] == $transaction->payload['unique_order_id']) {
+      $captured_amount += $capture_transaction->amount;
+    }
   }
-  else {
-    $default_amount = $transaction->amount;
-  }
-
-  // Convert the price amount to a user friendly decimal value.
-  $default_amount = number_format(commerce_currency_amount_to_decimal($default_amount, $transaction->currency_code), 2, '.', '');
+  $uncaptured_amount = $transaction->amount - $captured_amount;
 
   $description = implode('<br />', array(
     t('Authorisation: @amount', array('@amount' => commerce_currency_format($transaction->amount, $transaction->currency_code))),
-    t('Order balance: @balance', array('@balance' => commerce_currency_format($balance['amount'], $balance['currency_code']))),
+    t('Uncaptured amount: @balance', array('@balance' => commerce_currency_format($uncaptured_amount, $transaction->currency_code))),
   ));
+
+  // Convert the price amount to a user friendly decimal value.
+  $uncaptured_amount = number_format(commerce_currency_amount_to_decimal($uncaptured_amount, $transaction->currency_code), 2, '.', '');
 
   $form['amount'] = array(
     '#type' => 'textfield',
     '#title' => t('Capture amount'),
     '#description' => $description,
-    '#default_value' => $default_amount,
+    '#default_value' => $uncaptured_amount,
     '#field_suffix' => check_plain($transaction->currency_code),
     '#size' => 16,
   );
