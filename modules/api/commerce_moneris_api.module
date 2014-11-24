@@ -55,6 +55,47 @@ function commerce_moneris_api_commerce_payment_transaction_status_info() {
 }
 
 /**
+ * Implements hook_libraries_info().
+ */
+function commerce_moneris_api_libraries_info() {
+  $libraries['moneris-api-us'] = array(
+    'name' => 'Moneris API (US)',
+    'vendor url' => 'https://developer.moneris.com/',
+    'download url' => 'https://github.com/maciejzgadzaj/moneris-api-us/archive/master.zip',
+    'version' => '3.2.0+',
+    'files' => array(
+      'php' => array('mpgClasses.php'),
+    ),
+  );
+  $libraries['moneris-api-ca'] = array(
+    'name' => 'Moneris API (CA)',
+    'vendor url' => 'https://developer.moneris.com/',
+    'download url' => 'https://github.com/maciejzgadzaj/moneris-api-ca/archive/master.zip',
+    'version' => '2.5.6+',
+    'files' => array(
+      'php' => array('mpgClasses.php'),
+    ),
+  );
+
+  return $libraries;
+}
+
+/**
+ * Loads required Moneris API library.
+ *
+ * @param string $library_name
+ *   Name of the Moneris API library to load.
+ */
+function commerce_moneris_api_libraries_load($library_name) {
+  if (module_exists('libraries')) {
+    libraries_load($library_name);
+  }
+  else {
+    module_load_include('php', 'commerce_moneris_api', "includes/$library_name/mpgClasses");
+  }
+}
+
+/**
  * Implements hook_menu().
  */
 function commerce_moneris_api_menu() {
@@ -636,7 +677,7 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
   $txn_array = array_merge($txn_array, $cc_data);
 
   // Load native Moneris library relevant to selected gateway.
-  module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
+  commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
   // Create Moneris-compatible transaction request object.
   $mpg_transaction = new mpgTransaction($txn_array);
@@ -725,7 +766,7 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount)
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
 
   // Load native Moneris library relevant to selected gateway.
-  module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
+  commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
   // Create Moneris-compatible transaction request object.
   $mpg_transaction = new mpgTransaction($txn_array);
@@ -794,7 +835,7 @@ function commerce_moneris_api_transaction_capture($purchase_transaction, $amount
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
 
   // Load native Moneris library relevant to selected gateway.
-  module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
+  commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
   // Create Moneris-compatible transaction request object.
   $mpg_transaction = new mpgTransaction($txn_array);
@@ -863,7 +904,7 @@ function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
 
   // Load native Moneris library relevant to selected gateway.
-  module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
+  commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
   // Create Moneris-compatible transaction request object.
   $mpg_transaction = new mpgTransaction($txn_array);
@@ -925,7 +966,7 @@ function commerce_moneris_api_transaction_reauth($preauth_transaction, $amount) 
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
 
   // Load native Moneris library relevant to selected gateway.
-  module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
+  commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
   // Create Moneris-compatible transaction request object.
   $mpg_transaction = new mpgTransaction($txn_array);
@@ -955,7 +996,7 @@ function commerce_moneris_api_request($mpg_transaction, $payment_method, $order)
   $cacert_path = (!empty($payment_method['settings'][$gateway]['extra']['ssl'])) ? $payment_method['settings'][$gateway]['curl_certificate_path'] : '';
 
   // Load native Moneris library relevant to selected gateway.
-  module_load_include('php', 'commerce_moneris_api', "includes/$gateway/mpgClasses");
+  commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
   // Mask and log transaction object.
   if (!empty($payment_method['settings']['log']['request'])) {
