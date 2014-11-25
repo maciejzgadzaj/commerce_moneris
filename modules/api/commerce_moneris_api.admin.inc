@@ -84,10 +84,11 @@ function commerce_moneris_api_refund_form_validate($form, &$form_state) {
  * Submit handler: process a prior authorisation capture via AIM.
  */
 function commerce_moneris_api_refund_form_submit($form, &$form_state) {
+  $payment_method = $form_state['payment_method'];
   $transaction = $form_state['transaction'];
   $amount = $form_state['values']['amount'];
 
-  $response = commerce_moneris_api_transaction_refund($transaction, $amount);
+  $response = commerce_moneris_api_transaction_refund($transaction, $amount, $payment_method);
 
   $form_state['redirect'] = 'admin/commerce/orders/' . $form_state['order']->order_id . '/payment';
 }
@@ -167,10 +168,11 @@ function commerce_moneris_api_capture_form_validate($form, &$form_state) {
  * Submit handler: process a prior authorisation capture via AIM.
  */
 function commerce_moneris_api_capture_form_submit($form, &$form_state) {
+  $payment_method = $form_state['payment_method'];
   $transaction = $form_state['transaction'];
   $amount = $form_state['values']['amount'];
 
-  $response = commerce_moneris_api_transaction_capture($transaction, $amount);
+  $response = commerce_moneris_api_transaction_capture($transaction, $amount, $payment_method);
 
   $form_state['redirect'] = 'admin/commerce/orders/' . $form_state['order']->order_id . '/payment';
 }
@@ -209,10 +211,11 @@ function commerce_moneris_api_reverse_form($form, &$form_state, $order, $transac
  * Submit handler: process the void request.
  */
 function commerce_moneris_api_reverse_form_submit($form, &$form_state) {
+  $payment_method = $form_state['payment_method'];
   $transaction = $form_state['transaction'];
   $amount = $form_state['amount'];
 
-  $response = commerce_moneris_api_transaction_reverse($transaction, $amount);
+  $response = commerce_moneris_api_transaction_reverse($transaction, $amount, $payment_method);
 
   $form_state['redirect'] = 'admin/commerce/orders/' . $form_state['order']->order_id . '/payment';
 }
@@ -296,10 +299,11 @@ function commerce_moneris_api_reauth_form_validate($form, &$form_state) {
  * Submit handler: process a prior authorisation capture via AIM.
  */
 function commerce_moneris_api_reauth_form_submit($form, &$form_state) {
+  $payment_method = $form_state['payment_method'];
   $transaction = $form_state['transaction'];
   $amount = $form_state['values']['amount'];
 
-  $response = commerce_moneris_api_transaction_reauth($transaction, $amount);
+  $response = commerce_moneris_api_transaction_reauth($transaction, $amount, $payment_method);
 
   $form_state['redirect'] = 'admin/commerce/orders/' . $form_state['order']->order_id . '/payment';
 }

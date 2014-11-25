@@ -727,8 +727,7 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
  *
  * @return boolean
  */
-function commerce_moneris_api_transaction_refund($purchase_transaction, $amount) {
-  $payment_method = commerce_payment_method_instance_load($purchase_transaction->instance_id);
+function commerce_moneris_api_transaction_refund($purchase_transaction, $amount, $payment_method) {
   $order = commerce_order_load($purchase_transaction->order_id);
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
@@ -788,8 +787,7 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount)
  *
  * @return boolean
  */
-function commerce_moneris_api_transaction_capture($purchase_transaction, $amount) {
-  $payment_method = commerce_payment_method_instance_load($purchase_transaction->instance_id);
+function commerce_moneris_api_transaction_capture($purchase_transaction, $amount, $payment_method) {
   $order = commerce_order_load($purchase_transaction->order_id);
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
@@ -857,8 +855,7 @@ function commerce_moneris_api_transaction_capture($purchase_transaction, $amount
  *
  * @return boolean
  */
-function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount) {
-  $payment_method = commerce_payment_method_instance_load($purchase_transaction->instance_id);
+function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount, $payment_method) {
   $order = commerce_order_load($purchase_transaction->order_id);
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
@@ -926,8 +923,7 @@ function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount
  *
  * @return boolean
  */
-function commerce_moneris_api_transaction_reauth($preauth_transaction, $amount) {
-  $payment_method = commerce_payment_method_instance_load($preauth_transaction->instance_id);
+function commerce_moneris_api_transaction_reauth($preauth_transaction, $amount, $payment_method) {
   $order = commerce_order_load($preauth_transaction->order_id);
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
