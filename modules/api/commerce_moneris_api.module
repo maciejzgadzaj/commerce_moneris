@@ -696,13 +696,12 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
   if (!empty($payment_method['settings'][$gateway]['extra']['avs'])) {
     if ($order_wrapper->commerce_customer_billing->value()) {
       $billing_address = $order_wrapper->commerce_customer_billing->commerce_customer_address->value();
-      // For the moment we assume that street number will be the first element
-      // of thoroughfare value, with the remaining part being street name.
-      $thoroughfare = explode(' ', $billing_address['thoroughfare'], 2);
-
+      // Moneris technical support said over the phone that both street number
+      // and street name could be sent in avs_street_number value, with
+      // avs_street_name left empty, so we don't have to explode them.
       $avs_template = array(
-        'avs_street_number' => $thoroughfare[0],
-        'avs_street_name' => $thoroughfare[1],
+        'avs_street_number' => $billing_address['thoroughfare'],
+        'avs_street_name' => '',
         'avs_zipcode' => $billing_address['postal_code'],
       );
       $mpg_avs_info = new mpgAvsInfo($avs_template);
