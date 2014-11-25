@@ -11,10 +11,10 @@
  * Allows modules to alter transaction details before sending them to Moneris.
  *
  * @param array $txn_array
- *   An array of elements being sent to Moneris payment gateway.
+ *   An array of elements being sent to Moneris API payment gateway.
  * @param object $order
  *   An order object being paid for.
  */
-function hook_commerce_moneris_txnarray_alter(&$txn_array, $order) {
-  $txn_array['order_id'] = $order->order_number;
+function hook_commerce_moneris_api_txnarray_alter(&$txn_array, $order) {
+  $txn_array['commcard_invoice'] = 'Invoice #' . $order->order_number;
 }

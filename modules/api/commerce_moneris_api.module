@@ -662,7 +662,7 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
   // below, so we add them only after they have been already called.
 
   // Allow other modules to alter the transaction array.
-  drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+  drupal_alter('commerce_moneris_api_txnarray', $txn_array, $order);
 
   // Prepare credit card data to be added to transaction array.
   $cc_data = array(
