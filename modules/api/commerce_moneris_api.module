@@ -177,6 +177,9 @@ function commerce_moneris_api_access_refund($order, $transaction) {
     || (
       $transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_PURCHASE
       && $transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE
+      // Moneris API payment solution is also used for Refund, Reverse, Capture
+      // and ReAuth transactions done on HPP's Purchase and PreAuth transactions.
+      && $transaction->remote_status != COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_PURCHASE
     )
   ) {
     return FALSE;
@@ -187,11 +190,15 @@ function commerce_moneris_api_access_refund($order, $transaction) {
   // we don't want to allow for another refund.
   $conditions = array(
     'order_id' => $order->order_id,
-    'payment_method' => $transaction->payment_method,
-    'instance_id' => $transaction->instance_id,
+    'payment_method' => 'commerce_moneris_api',
     'remote_status' => COMMERCE_MONERIS_API_TRANSACTION_TYPE_REFUND,
     'status' => COMMERCE_PAYMENT_STATUS_SUCCESS,
   );
+  // If the original transaction was done using the API payment method, we need
+  // to make sure that possible Refunds are done using the same instance.
+  if ($transaction->payment_method == 'commerce_moneris_api') {
+    $conditions['instance_id'] = $transaction->instance_id;
+  }
   $refunded_amount = 0;
   foreach (commerce_payment_transaction_load_multiple(array(), $conditions) as $refund_transaction) {
     if ($refund_transaction->payload['related_order_id'] == $transaction->payload['unique_order_id']) {
@@ -224,7 +231,12 @@ function commerce_moneris_api_access_capture($order, $auth_transaction) {
   if (
     !commerce_moneris_api_access_common($order, $auth_transaction)
     // Capture could be done only for PreAuth/ReAuth (01) transactions.
-    || $auth_transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH
+    || (
+      $auth_transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH
+      // Moneris API payment solution is also used for Refund, Reverse, Capture
+      // and ReAuth transactions done on HPP's Purchase and PreAuth transactions.
+      && $auth_transaction->remote_status != COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH
+    )
   ) {
     return FALSE;
   }
@@ -234,14 +246,21 @@ function commerce_moneris_api_access_capture($order, $auth_transaction) {
   // (or reverse) transactions for this authorisation transaction.
   $conditions = array(
     'order_id' => $order->order_id,
-    'payment_method' => $auth_transaction->payment_method,
-    'instance_id' => $auth_transaction->instance_id,
-    'remote_status' => COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
+    'payment_method' => 'commerce_moneris_api',
+    'remote_status' => array(
+      COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
+      COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH,
+    ),
     'status' => array(
       COMMERCE_PAYMENT_STATUS_SUCCESS,
       COMMERCE_PAYMENT_STATUS_MONERIS_REVERSED,
     ),
   );
+  // If the original transaction was done using the API payment method, we need
+  // to make sure that possible Captures are done using the same instance.
+  if ($auth_transaction->payment_method == 'commerce_moneris_api') {
+    $conditions['instance_id'] = $auth_transaction->instance_id;
+  }
   foreach (commerce_payment_transaction_load_multiple(array(), $conditions) as $capture_transaction) {
     if ($capture_transaction->payload['related_order_id'] == $auth_transaction->payload['unique_order_id']) {
       return FALSE;
@@ -268,7 +287,12 @@ function commerce_moneris_api_access_reverse($order, $auth_transaction) {
   if (
     !commerce_moneris_api_access_common($order, $auth_transaction)
     // Reverse could be done only for PreAuth (01) transactions.
-    || $auth_transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH
+    || (
+      $auth_transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH
+      // Moneris API payment solution is also used for Refund, Reverse, Capture
+      // and ReAuth transactions done on HPP's Purchase and PreAuth transactions.
+      && $auth_transaction->remote_status != COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH
+    )
   ) {
     return FALSE;
   }
@@ -279,14 +303,21 @@ function commerce_moneris_api_access_reverse($order, $auth_transaction) {
   // Also, no already existing reverse transaction either.
   $conditions = array(
     'order_id' => $order->order_id,
-    'payment_method' => $auth_transaction->payment_method,
-    'instance_id' => $auth_transaction->instance_id,
-    'remote_status' => COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
+    'payment_method' => 'commerce_moneris_api',
+    'remote_status' => array(
+      COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
+      COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH,
+    ),
     'status' => array(
       COMMERCE_PAYMENT_STATUS_SUCCESS,
       COMMERCE_PAYMENT_STATUS_MONERIS_REVERSED,
     ),
   );
+  // If the original transaction was done using the API payment method, we need
+  // to make sure that possible Reverses are done using the same instance.
+  if ($auth_transaction->payment_method == 'commerce_moneris_api') {
+    $conditions['instance_id'] = $auth_transaction->instance_id;
+  }
   foreach (commerce_payment_transaction_load_multiple(array(), $conditions) as $capture_transaction) {
     if (
       !empty($capture_transaction->payload['related_order_id'])
@@ -316,7 +347,12 @@ function commerce_moneris_api_access_reauth($order, $auth_transaction) {
   if (
     !commerce_moneris_api_access_common($order, $auth_transaction)
     // Reverse could be done only for PreAuth (01) transactions.
-    || $auth_transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH
+    || (
+      $auth_transaction->remote_status != COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH
+      // Moneris API payment solution is also used for Refund, Reverse, Capture
+      // and ReAuth transactions done on HPP's Purchase and PreAuth transactions.
+      && $auth_transaction->remote_status != COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH
+    )
   ) {
     return FALSE;
   }
@@ -328,17 +364,22 @@ function commerce_moneris_api_access_reauth($order, $auth_transaction) {
   // merchant to be able to capture the remaining amount.
   $conditions = array(
     'order_id' => $order->order_id,
-    'payment_method' => $auth_transaction->payment_method,
-    'instance_id' => $auth_transaction->instance_id,
+    'payment_method' => 'commerce_moneris_api',
     'remote_status' => array(
       COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH,
       COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
+      COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH,
     ),
     'status' => array(
       COMMERCE_PAYMENT_STATUS_SUCCESS,
       COMMERCE_PAYMENT_STATUS_MONERIS_AUTHORISED,
     ),
   );
+  // If the original transaction was done using the API payment method, we need
+  // to make sure that possible ReAuths are done using the same instance.
+  if ($auth_transaction->payment_method == 'commerce_moneris_api') {
+    $conditions['instance_id'] = $auth_transaction->instance_id;
+  }
   $captured_amount = 0;
   foreach (commerce_payment_transaction_load_multiple(array(), $conditions) as $capture_transaction) {
     if (
@@ -377,6 +418,7 @@ function commerce_moneris_api_access_common($order, $transaction) {
   // wasn't successful, or we don't have its remote_id.
   if (
     $transaction->payment_method != 'commerce_moneris_api'
+    && $transaction->payment_method != 'commerce_moneris_hpp'
     || (
       $transaction->status != COMMERCE_PAYMENT_STATUS_SUCCESS
       && $transaction->status != COMMERCE_PAYMENT_STATUS_MONERIS_AUTHORISED
@@ -397,7 +439,11 @@ function commerce_moneris_api_help($path, $arg) {
     // Display help on Moneris transaction operations on order Payment page.
     case 'admin/commerce/orders/%/payment':
       // Display help only if at least one Moneris API transaction already exists.
-      if (commerce_payment_transaction_load_multiple(array(), array('order_id' => $arg[3], 'payment_method' => 'commerce_moneris_api'))) {
+      $conditions = array(
+        'order_id' => $arg[3],
+        'payment_method' => array('commerce_moneris_api', 'commerce_moneris_hpp'),
+      );
+      if (commerce_payment_transaction_load_multiple(array(), $conditions)) {
         return '<p>' . t('Possible operations on <em>Moneris API</em> transactions:') . '</p><p><ul>'
           . '<li>' . t('<b><em>Refund</em></b> will credit a specified amount to the cardholder’s credit card. A <em>Refund</em> can be sent up to the full value of the original <em>Capture</em> or <em>Purchase</em>.') . '</li>'
           . '<li>' . t('<b><em>PreAuth</em></b> transactions <b>must</b> be reversed if they are not to be captured. <em>PreAuth</em> may only be captured <b>once</b> for less than, equal to, or greater than the original <em>PreAuth</em> amount. If the <em>PreAuth</em> is captured for less than its total amount, then a <em>ReAuth</em> is first required to be able to capture the remainder.') . '</li>'
@@ -717,7 +763,7 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
 }
 
 /**
- * Refunds a transaction.
+ * Refunds a purchase or capture transaction.
  *
  * @param object $purchase_transaction
  *   Transaction to be refunded.
@@ -725,6 +771,7 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
  *   Ammount to be refunded as a decimal.
  *
  * @return boolean
+ *   Boolean indicating whether a transaction was successful or not.
  */
 function commerce_moneris_api_transaction_refund($purchase_transaction, $amount, $payment_method) {
   $order = commerce_order_load($purchase_transaction->order_id);
@@ -748,7 +795,6 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount,
   // Therefore we will combine it with our local transaction ID.
   $unique_order_id = $order->order_id . '-' . $transaction->transaction_id;
   $transaction->payload['unique_order_id'] = $unique_order_id;
-  commerce_payment_transaction_save($transaction);
 
   // Create transaction data.
   $txn_array = array(
@@ -763,6 +809,9 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount,
   // Allow other modules to alter the transaction array.
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
 
+  $transaction->payload['request'] = $txn_array;
+  commerce_payment_transaction_save($transaction);
+
   // Load native Moneris library relevant to selected gateway.
   commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
@@ -777,30 +826,31 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount,
 }
 
 /**
- * Refunds a transaction.
+ * Captures an authorisation transaction.
  *
- * @param object $purchase_transaction
- *   Transaction to be refunded.
+ * @param object $auth_transaction
+ *   Transaction to be captured.
  * @param decimal $amount
  *   Ammount to be refunded as a decimal.
  *
  * @return boolean
+ *   Boolean indicating whether a transaction was successful or not.
  */
-function commerce_moneris_api_transaction_capture($purchase_transaction, $amount, $payment_method) {
-  $order = commerce_order_load($purchase_transaction->order_id);
+function commerce_moneris_api_transaction_capture($auth_transaction, $amount, $payment_method) {
+  $order = commerce_order_load($auth_transaction->order_id);
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
 
   // Save initial transaction.
-  $transaction = commerce_payment_transaction_new('commerce_moneris_api', $purchase_transaction->order_id);
+  $transaction = commerce_payment_transaction_new('commerce_moneris_api', $auth_transaction->order_id);
   $transaction->instance_id = $payment_method['instance_id'];
-  $transaction->amount = commerce_currency_decimal_to_amount($amount, $purchase_transaction->currency_code);
-  $transaction->currency_code = $purchase_transaction->currency_code;
+  $transaction->amount = commerce_currency_decimal_to_amount($amount, $auth_transaction->currency_code);
+  $transaction->currency_code = $auth_transaction->currency_code;
   $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
   $transaction->payload = array(
     'gateway' => $gateway,
     'server' => $environment,
-    'related_order_id' => $purchase_transaction->payload['unique_order_id'],
+    'related_order_id' => $auth_transaction->payload['unique_order_id'],
   );
   commerce_payment_transaction_save($transaction);
 
@@ -808,7 +858,6 @@ function commerce_moneris_api_transaction_capture($purchase_transaction, $amount
   // Therefore we will combine it with our local transaction ID.
   $unique_order_id = $order->order_id . '-' . $transaction->transaction_id;
   $transaction->payload['unique_order_id'] = $unique_order_id;
-  commerce_payment_transaction_save($transaction);
 
   // Tax amount - as seen in commerce_paypal_ec_itemise_order().
   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
@@ -818,9 +867,9 @@ function commerce_moneris_api_transaction_capture($purchase_transaction, $amount
   // Create transaction data.
   $txn_array = array(
     'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_completion' : 'completion',
-    'order_id' => $purchase_transaction->payload['unique_order_id'],
+    'order_id' => $auth_transaction->payload['unique_order_id'],
     'comp_amount' => number_format($amount, 2, '.', ''),
-    'txn_number' => $purchase_transaction->remote_id,
+    'txn_number' => $auth_transaction->remote_id,
     // '7' stands for 'SSL enabled merchant'.
     'crypt_type' => '7',
     // Optional Level 2 variables.
@@ -831,6 +880,9 @@ function commerce_moneris_api_transaction_capture($purchase_transaction, $amount
   // Allow other modules to alter the transaction array.
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
 
+  $transaction->payload['request'] = $txn_array;
+  commerce_payment_transaction_save($transaction);
+
   // Load native Moneris library relevant to selected gateway.
   commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
 
@@ -845,30 +897,30 @@ function commerce_moneris_api_transaction_capture($purchase_transaction, $amount
 }
 
 /**
- * Refunds a transaction.
+ * Reverses an authorisation transaction.
  *
- * @param object $purchase_transaction
- *   Transaction to be refunded.
+ * @param object $auth_transaction
+ *   Transaction to be reversed.
  * @param decimal $amount
  *   Ammount to be refunded as a decimal.
  *
  * @return boolean
  */
-function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount, $payment_method) {
-  $order = commerce_order_load($purchase_transaction->order_id);
+function commerce_moneris_api_transaction_reverse($auth_transaction, $amount, $payment_method) {
+  $order = commerce_order_load($auth_transaction->order_id);
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
 
   // Save initial transaction.
-  $transaction = commerce_payment_transaction_new('commerce_moneris_api', $purchase_transaction->order_id);
+  $transaction = commerce_payment_transaction_new('commerce_moneris_api', $auth_transaction->order_id);
   $transaction->instance_id = $payment_method['instance_id'];
-  $transaction->amount = -commerce_currency_decimal_to_amount($amount, $purchase_transaction->currency_code);
-  $transaction->currency_code = $purchase_transaction->currency_code;
+  $transaction->amount = -commerce_currency_decimal_to_amount($amount, $auth_transaction->currency_code);
+  $transaction->currency_code = $auth_transaction->currency_code;
   $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
   $transaction->payload = array(
     'gateway' => $gateway,
     'server' => $environment,
-    'related_order_id' => $purchase_transaction->payload['unique_order_id'],
+    'related_order_id' => $auth_transaction->payload['unique_order_id'],
   );
   commerce_payment_transaction_save($transaction);
 
@@ -878,26 +930,21 @@ function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount
   $transaction->payload['unique_order_id'] = $unique_order_id;
   commerce_payment_transaction_save($transaction);
 
-  // Tax amount - as seen in commerce_paypal_ec_itemise_order().
-  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $order_total = $order_wrapper->commerce_order_total->value();
-  $tax_amount = (module_exists('commerce_tax')) ? commerce_round(COMMERCE_ROUND_HALF_UP, commerce_tax_total_amount($order_total['data']['components'], FALSE, $order_total['currency_code'])) : 0;
-
   // Create transaction data.
   $txn_array = array(
     'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_completion' : 'completion',
-    'order_id' => $purchase_transaction->payload['unique_order_id'],
+    'order_id' => $auth_transaction->payload['unique_order_id'],
     'comp_amount' => '0.00',
-    'txn_number' => $purchase_transaction->remote_id,
+    'txn_number' => $auth_transaction->remote_id,
     // '7' stands for 'SSL enabled merchant'.
     'crypt_type' => '7',
-    // Optional Level 2 variables.
-//    'commcard_invoice' => $order->order_number,
-//    'commcard_tax_amount' => $tax_amount,
   );
 
   // Allow other modules to alter the transaction array.
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+
+  $transaction->payload['request'] = $txn_array;
+  commerce_payment_transaction_save($transaction);
 
   // Load native Moneris library relevant to selected gateway.
   commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
@@ -913,30 +960,30 @@ function commerce_moneris_api_transaction_reverse($purchase_transaction, $amount
 }
 
 /**
- * Refunds a transaction.
+ * Reauthorises an authorisation transaction.
  *
- * @param object $purchase_transaction
- *   Transaction to be refunded.
+ * @param object $auth_transaction
+ *   Transaction to be reauthorised.
  * @param decimal $amount
- *   Ammount to be refunded as a decimal.
+ *   Ammount to be reauthorised as a decimal.
  *
  * @return boolean
  */
-function commerce_moneris_api_transaction_reauth($preauth_transaction, $amount, $payment_method) {
-  $order = commerce_order_load($preauth_transaction->order_id);
+function commerce_moneris_api_transaction_reauth($auth_transaction, $amount, $payment_method) {
+  $order = commerce_order_load($auth_transaction->order_id);
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
 
   // Save initial transaction.
-  $transaction = commerce_payment_transaction_new('commerce_moneris_api', $preauth_transaction->order_id);
+  $transaction = commerce_payment_transaction_new('commerce_moneris_api', $auth_transaction->order_id);
   $transaction->instance_id = $payment_method['instance_id'];
-  $transaction->amount = commerce_currency_decimal_to_amount($amount, $preauth_transaction->currency_code);
-  $transaction->currency_code = $preauth_transaction->currency_code;
+  $transaction->amount = commerce_currency_decimal_to_amount($amount, $auth_transaction->currency_code);
+  $transaction->currency_code = $auth_transaction->currency_code;
   $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
   $transaction->payload = array(
     'gateway' => $gateway,
     'server' => $environment,
-    'related_order_id' => $preauth_transaction->payload['unique_order_id'],
+    'related_order_id' => $auth_transaction->payload['unique_order_id'],
   );
   commerce_payment_transaction_save($transaction);
 
@@ -950,8 +997,8 @@ function commerce_moneris_api_transaction_reauth($preauth_transaction, $amount, 
   $txn_array = array(
     'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_reauth' : 'reauth',
     'order_id' => $unique_order_id,
-    'orig_order_id' => $preauth_transaction->payload['unique_order_id'],
-    'txn_number' => $preauth_transaction->remote_id,
+    'orig_order_id' => $auth_transaction->payload['unique_order_id'],
+    'txn_number' => $auth_transaction->remote_id,
     'amount' => $amount,
     // '7' stands for 'SSL enabled merchant'.
     'crypt_type' => '7',
@@ -959,6 +1006,9 @@ function commerce_moneris_api_transaction_reauth($preauth_transaction, $amount, 
 
   // Allow other modules to alter the transaction array.
   drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+
+  $transaction->payload['request'] = $txn_array;
+  commerce_payment_transaction_save($transaction);
 
   // Load native Moneris library relevant to selected gateway.
   commerce_moneris_api_libraries_load('moneris-api-' . $gateway);

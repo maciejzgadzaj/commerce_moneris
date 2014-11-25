@@ -14,6 +14,13 @@ function commerce_moneris_api_refund_form($form, &$form_state, $order, $transact
 
   // Load and store the payment method instance for this transaction.
   $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
+  // If original transaction was done using HPP payment method,
+  // the Refund should be done using relevant API payment method.
+  if ($payment_method['method_id'] == 'commerce_moneris_hpp') {
+    if (!empty($payment_method['settings']['moneris_api'])) {
+      $payment_method = commerce_payment_method_instance_load($payment_method['settings']['moneris_api']);
+    }
+  }
   $form_state['payment_method'] = $payment_method;
 
   $conditions = array(
@@ -102,36 +109,27 @@ function commerce_moneris_api_capture_form($form, &$form_state, $order, $transac
 
   // Load and store the payment method instance for this transaction.
   $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
-  $form_state['payment_method'] = $payment_method;
-
-  $conditions = array(
-    'order_id' => $order->order_id,
-    'payment_method' => $transaction->payment_method,
-    'instance_id' => $transaction->instance_id,
-    'remote_status' => COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
-    'status' => COMMERCE_PAYMENT_STATUS_SUCCESS,
-  );
-  $captured_amount = 0;
-  foreach (commerce_payment_transaction_load_multiple(array(), $conditions) as $capture_transaction) {
-    if ($capture_transaction->payload['related_order_id'] == $transaction->payload['unique_order_id']) {
-      $captured_amount += $capture_transaction->amount;
+  // If original transaction was done using HPP payment method,
+  // the Capture should be done using relevant API payment method.
+  if ($payment_method['method_id'] == 'commerce_moneris_hpp') {
+    if (!empty($payment_method['settings']['moneris_api'])) {
+      $payment_method = commerce_payment_method_instance_load($payment_method['settings']['moneris_api']);
     }
   }
-  $uncaptured_amount = $transaction->amount - $captured_amount;
+  $form_state['payment_method'] = $payment_method;
 
   $description = implode('<br />', array(
     t('Authorisation: @amount', array('@amount' => commerce_currency_format($transaction->amount, $transaction->currency_code))),
-    t('Uncaptured amount: @balance', array('@balance' => commerce_currency_format($uncaptured_amount, $transaction->currency_code))),
   ));
 
   // Convert the price amount to a user friendly decimal value.
-  $uncaptured_amount = number_format(commerce_currency_amount_to_decimal($uncaptured_amount, $transaction->currency_code), 2, '.', '');
+  $amount = number_format(commerce_currency_amount_to_decimal($transaction->amount, $transaction->currency_code), 2, '.', '');
 
   $form['amount'] = array(
     '#type' => 'textfield',
     '#title' => t('Capture amount'),
     '#description' => $description,
-    '#default_value' => $uncaptured_amount,
+    '#default_value' => $amount,
     '#field_suffix' => check_plain($transaction->currency_code),
     '#size' => 16,
   );
@@ -186,6 +184,13 @@ function commerce_moneris_api_reverse_form($form, &$form_state, $order, $transac
 
   // Load and store the payment method instance for this transaction.
   $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
+  // If original transaction was done using HPP payment method,
+  // the Reverse should be done using relevant API payment method.
+  if ($payment_method['method_id'] == 'commerce_moneris_hpp') {
+    if (!empty($payment_method['settings']['moneris_api'])) {
+      $payment_method = commerce_payment_method_instance_load($payment_method['settings']['moneris_api']);
+    }
+  }
   $form_state['payment_method'] = $payment_method;
 
   // Convert the price amount to a user friendly decimal value.
@@ -229,18 +234,35 @@ function commerce_moneris_api_reauth_form($form, &$form_state, $order, $transact
 
   // Load and store the payment method instance for this transaction.
   $payment_method = commerce_payment_method_instance_load($transaction->instance_id);
+  // If original transaction was done using HPP payment method,
+  // the ReAuth should be done using relevant API payment method.
+  if ($payment_method['method_id'] == 'commerce_moneris_hpp') {
+    if (!empty($payment_method['settings']['moneris_api'])) {
+      $payment_method = commerce_payment_method_instance_load($payment_method['settings']['moneris_api']);
+    }
+  }
   $form_state['payment_method'] = $payment_method;
 
   $conditions = array(
     'order_id' => $order->order_id,
-    'payment_method' => $transaction->payment_method,
-    'instance_id' => $transaction->instance_id,
-    'remote_status' => COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
-    'status' => COMMERCE_PAYMENT_STATUS_SUCCESS,
+    'payment_method' => 'commerce_moneris_api',
+    'remote_status' => array(
+      COMMERCE_MONERIS_API_TRANSACTION_TYPE_CAPTURE,
+      COMMERCE_MONERIS_API_TRANSACTION_TYPE_AUTH,
+    ),
+    'status' => array(
+      COMMERCE_PAYMENT_STATUS_SUCCESS,
+      COMMERCE_PAYMENT_STATUS_MONERIS_AUTHORISED,
+    ),
   );
+  // If the original transaction was done using the API payment method, we need
+  // to make sure that possible Reverses are done using the same instance.
+  if ($transaction->payment_method == 'commerce_moneris_api') {
+    $conditions['instance_id'] = $transaction->instance_id;
+  }
   $captured_amount = 0;
   foreach (commerce_payment_transaction_load_multiple(array(), $conditions) as $capture_transaction) {
-    if ($capture_transaction->payload['related_order_id'] == $transaction->payload['unique_order_id']) {
+    if (!empty($capture_transaction->payload['related_order_id']) && $capture_transaction->payload['related_order_id'] == $transaction->payload['unique_order_id']) {
       $captured_amount += $capture_transaction->amount;
     }
   }

@@ -53,9 +53,18 @@ function commerce_moneris_hpp_commerce_payment_transaction_status_info() {
 function commerce_moneris_hpp_menu() {
   $items = array();
 
+  // Response URL.
   $items['commerce-moneris-hpp/callback'] = array(
-    'title' => 'Moneris HPP Callback',
-    'page callback' => 'commerce_moneris_hpp_callback_page_response',
+    'page callback' => 'commerce_moneris_hpp_callback_response',
+    'page arguments' => array('response'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+
+  // Async Response URL.
+  $items['commerce-moneris-hpp/validate'] = array(
+    'page callback' => 'commerce_moneris_hpp_callback_response',
+    'page arguments' => array('validate'),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -78,7 +87,8 @@ function commerce_moneris_hpp_settings_form($settings = array()) {
 
   $form = array();
 
-  $markup = '<p>' . t('Response URL: @response_url', array('@response_url' => $base_url . '/commerce-moneris-hpp/callback')) . '</p>';
+  $markup = '<p>' . t('Response URL: @response_url', array('@response_url' => $base_url . '/commerce-moneris-hpp/callback'));
+  $markup .= '<br />' . t('Async Response URL: @response_url', array('@response_url' => $base_url . '/commerce-moneris-hpp/validate')) . '</p>';
   $form['markup'] = array(
     '#markup' => $markup,
   );
@@ -151,6 +161,19 @@ function commerce_moneris_hpp_settings_form($settings = array()) {
     ),
     '#default_value' => $settings['log'],
   );
+
+  if (module_exists('commerce_moneris_api')) {
+    $options = array();
+    foreach (commerce_moneris_hpp_payment_method_instances('commerce_moneris_api') as $instance => $method) {
+      $options[$instance] = $method['title'];
+    }
+    $form['moneris_api'] = array(
+      '#type' => 'select',
+      '#title' => t('Moneris API payment method'),
+      '#description' => t('Selected Moneris API payment method will be use for <em>Refund</em>, <em>Capture</em>, <em>ReAuth</em> and <em>Reverse</em> transactions.'),
+      '#options' => $options,
+    );
+  }
 
   return $form;
 }
@@ -271,45 +294,115 @@ function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $paymen
 }
 
 /**
- * Callback page for the main transaction response.
+ * Callback page for both gateway responses - redirect back and validate.
+ *
+ * @param string $callback_type
+ *   A string indicating which callback type we are dealing with.
+ *   Might be either 'response', when a user is redirected back from Moneris
+ *   gateway after completing/cancelling the payment transaction, or 'validate',
+ *   when the gateway performs an asyncronous callback to verify transaction
+ *   details/status.
  *
  * @see commerce_moneris_hpp_menu().
  */
-function commerce_moneris_hpp_callback_page_response() {
-  // Load order and payment_method objects.
+function commerce_moneris_hpp_callback_response($callback_type) {
+  // Fetch Moneris gateway transaction response.
   if ($response = commerce_moneris_hpp_get_response()) {
+
+    // For Asyncronous Response callbacks the response is returned as XML
+    // in the 'xml_response' value.
+    if ($callback_type == 'validate' && !empty($response['xml_response'])) {
+      $response = (array) new SimpleXMLElement($response['xml_response']);
+    }
+
     // At this moment we still have no idea whether we are dealing with US
     // or CA gateway, so we just try both response fields to find order_id.
     $order_no = (!empty($response['order_no'])) ? $response['order_no'] : $response['response_order_id'];
     list($order_id, $transaction_id) = explode('-', $order_no);
     if ($order = commerce_order_load($order_id)) {
       $payment_method = commerce_payment_method_instance_load($order->data['payment_method']);
-      if (!$payment_method || $payment_method['method_id'] != 'commerce_moneris_hpp') {
-        return FALSE;
-      }
 
+      // Log received response in dblog.
       if (!empty($payment_method['settings']['log']['response'])) {
-        $gateway = $payment_method['settings']['gateway'];
-        $environment = $payment_method['settings']['server'];
-        commerce_moneris_log('commerce_moneris_hpp', 'response: <pre>' . check_plain(print_r($response, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+        watchdog('commerce_moneris_hpp', $callback_type . ': <pre>' . check_plain(print_r($response, TRUE)) . '</pre>', array(), WATCHDOG_DEBUG);
       }
 
+      // Log received response in transaction payload.
       $transaction = commerce_payment_transaction_load($transaction_id);
+      $transaction->payload[$callback_type] = $response;
+      commerce_payment_transaction_save($transaction);
 
-      if (commerce_moneris_hpp_process_response($response, $order, $payment_method, $transaction)) {
-        commerce_payment_redirect_pane_next_page($order);
+      // Return false if payment method instance was not found.
+      if (!$payment_method || $payment_method['method_id'] != 'commerce_moneris_hpp') {
+        $error = 'Unable to load payment method';
       }
+
+      // For the response callback type (user returning to the site after
+      // completing the payment process) we don't want to save the updated
+      // transaction just yet. Instead we will move the order forward in the
+      // checkout process (or backwards, if the payment transaction failed
+      // for any reason) to take the user to the order completion page.
+      if (commerce_moneris_hpp_process_response($response, $payment_method, $transaction)) {
+        if ($callback_type == 'response') {
+          commerce_payment_redirect_pane_next_page($order);
+        }
+      }
+
+      // For the response callback type (user returning to the site after
+      // completing the payment process) we don't want to save the updated
+      // transaction just yet. We only want to do it only when we receive
+      // the asyncronous validation callback from the gateway, regardless
+      // of whether the transaction succeeded or failed.
+      if ($callback_type == 'validate') {
+        commerce_payment_transaction_save($transaction);
+      }
+      // In case of response callback we want to display an error
+      // message to the user if the transaction failed.
       else {
-        commerce_payment_redirect_pane_previous_page($order);
+        if ($transaction->status == COMMERCE_PAYMENT_STATUS_FAILURE) {
+          $error = 'We encountered an error processing your transaction. Please enter your information again or try a different card.';
+        }
+        elseif ($transaction->status == COMMERCE_PAYMENT_STATUS_MONERIS_CANCELLED) {
+          $error = 'You have cancelled payment, but may resume the checkout process here when you are ready.';
+        }
       }
+    }
+    // We were unable to load the original order.
+    else {
+      $error = 'Unable to load an order';
+    }
+  }
+  else {
+    $error = 'Unable to get response';
+  }
+
+  if (!empty($error)) {
+    // Log the error message in the dblog, both in case of response
+    // and validate gateway callbacks.
+    watchdog('commerce_moneris_hpp', '@error. Gateway response: @response', array(
+      'error' => $error,
+      'response' => '<pre>' . var_export($response, TRUE) . '</pre>',
+    ), WATCHDOG_ERROR);
+
+    // In case of the response callback display the error message to the user
+    // and move the order backwards in the checkout process.
+    if ($callback_type == 'response') {
+      commerce_payment_redirect_pane_previous_page($order);
+      drupal_set_message(t($error), 'error');
     }
   }
 
-  drupal_goto(commerce_checkout_order_uri($order));
+  // In case of the response callback, after we moved the order forward (or
+  // backwards, if the transaction failed), we need to redirect the user to
+  // the relevant page. No need to redirect for validation callback, as
+  // no page is being displayed in this case.
+  if ($callback_type == 'response') {
+    drupal_goto(commerce_checkout_order_uri($order));
+  }
 }
 
 /**
- * Gets Moneris HPP feedback from GET / POST parameters.
+ * Gets Moneris HPP feedback from GET/POST parameters.
  *
  * @return
  *   An associative array containing the Moneris feedback taken from the $_GET
@@ -324,28 +417,43 @@ function commerce_moneris_hpp_get_response() {
   return $response;
 }
 
-function commerce_moneris_hpp_process_response($response, $order, $payment_method, $transaction) {
+/**
+ * Processes response received from Moneris HPP and updates transaction object.
+ *
+ * @param $response
+ * @param $payment_method
+ * @param $transaction
+ * @return bool
+ */
+function commerce_moneris_hpp_process_response($response, $payment_method, &$transaction) {
+  if (empty($payment_method['settings']['gateway'])) {
+    return FALSE;
+  }
+
   $gateway = $payment_method['settings']['gateway'];
   $environment = $payment_method['settings']['server'];
 
-  // Log received response.
-  $transaction->payload['response'] = $response;
-
   $txn_type_field = commerce_moneris_hpp_get_response_field_name('txn_type', $gateway);
 
-  // Transaction was cancelled (US).
+  // Transaction was cancelled (US). There is no Enhanced Cancel support on US
+  // gateway (as there is on CA), so we won't receive any transaction details
+  // in the callback (like 'response_code' or anything else really).
   if (!empty($response['cancel'])) {
     $transaction->status = COMMERCE_PAYMENT_STATUS_MONERIS_CANCELLED;
     $transaction->message = $response['cancel'];
+    $return = FALSE;
   }
   // Transaction was cancelled (CA).
+  // TODO: Check $response['result'] here as well?
   elseif ($response['response_code'] == '914') {
     $transaction->status = COMMERCE_PAYMENT_STATUS_MONERIS_CANCELLED;
     $transaction->message = $response['message'];
+    $return = FALSE;
   }
   elseif (empty($response['result']) || $response['result'] != '1') {
     $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
     $transaction->message = $response['message'];
+    $return = FALSE;
   }
   else {
     // Response code will be returned as a string like '027', so we need
@@ -355,10 +463,12 @@ function commerce_moneris_hpp_process_response($response, $order, $payment_metho
     // Transaction was approved.
     if ($response_code < 50) {
       $transaction->status = commerce_moneris_hpp_get_transaction_success_status($response[$txn_type_field]);
+      $return = TRUE;
     }
     // Transaction was declined.
     else {
       $transaction->status = COMMERCE_PAYMENT_STATUS_FAILURE;
+      $return = FALSE;
     }
 
     // Update commerce payment transaction.
@@ -366,7 +476,7 @@ function commerce_moneris_hpp_process_response($response, $order, $payment_metho
 
     // Build transaction message from main status message and all validators.
     $transaction->message = t('@txn_type: !message', array(
-      '@txn_type' => commerce_moneris_hpp_get_transaction_type($transaction),
+      '@txn_type' => commerce_moneris_hpp_get_transaction_type($response, $gateway),
       '!message' => $response['message'],
     ));
     // Add eFraud information if available.
@@ -391,18 +501,7 @@ function commerce_moneris_hpp_process_response($response, $order, $payment_metho
     $transaction->remote_status = $response[$txn_type_field];
   }
 
-  commerce_payment_transaction_save($transaction);
-
-  if ($transaction->status == COMMERCE_PAYMENT_STATUS_FAILURE) {
-    drupal_set_message(t('We encountered an error processing your transaction. Please enter your information again or try a different card.'), 'error');
-    return FALSE;
-  }
-  elseif ($transaction->status == COMMERCE_PAYMENT_STATUS_MONERIS_CANCELLED) {
-    drupal_set_message(t('You have cancelled payment, but may resume the checkout process here when you are ready.'), 'error');
-    return FALSE;
-  }
-
-  return TRUE;
+  return $return;
 }
 
 /**
@@ -428,11 +527,13 @@ function commerce_moneris_hpp_get_server_url($gateway, $environment) {
  */
 function commerce_moneris_hpp_get_transaction_success_status($trans_type) {
   switch ($trans_type) {
-    // Purchase, Refund.
+    // Purchase. Use standard transaction success status, which means
+    // these transactions will be included in order balance calculations.
     case COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_PURCHASE:
     case COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_CAVV_PURCHASE:
       return COMMERCE_PAYMENT_STATUS_SUCCESS;
-    // PreAuth.
+    // PreAuth. We don't want these transactions to be included in order
+    // balance calculations, so we'll use custom status for them.
     case COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH:
     case COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_CAVV_PREAUTH:
       return COMMERCE_PAYMENT_STATUS_MONERIS_AUTHORISED;
@@ -467,7 +568,68 @@ function commerce_moneris_hpp_get_response_field_name($field, $gateway) {
  * @return string
  *   Transaction type.
  */
-function commerce_moneris_hpp_get_transaction_type($transaction) {
-  $txn_type_field = commerce_moneris_hpp_get_response_field_name('txn_type', $transaction->payload['gateway']);
-  return $transaction->payload['response'][$txn_type_field];
+function commerce_moneris_hpp_get_transaction_type($response, $gateway) {
+  $txn_type_field = commerce_moneris_hpp_get_response_field_name('txn_type', $gateway);
+  return $response[$txn_type_field];
+}
+
+/**
+ * Returns all payment method instances for a given payment method id
+ *
+ * @param $method_id
+ *   A payment method id
+ * @param $include_disabled
+ *   Return enabled and disabled instances
+ *
+ * @return
+ *   An array of all loaded payment method instances keyed by instance_id
+ */
+function commerce_moneris_hpp_payment_method_instances($method_id, $include_disabled = FALSE) {
+  $cached_ids = &drupal_static(__FUNCTION__, array());
+  $include_disabled = !empty($include_disabled);
+
+  if (!array_key_exists($method_id, $cached_ids)) {
+    $cached_ids[$method_id] = array();
+
+    // load all rules ... no easier way
+    $rules_configs = rules_config_load_multiple(FALSE);
+
+    // find all rules with an action to enable this method
+    foreach ($rules_configs as $rule_name => $rule) {
+      // Only rules and sub-types have actions.
+      if (!($rule instanceof Rule)) {
+        continue;
+      }
+
+      // fast skip if rule does not depend on commerce_payment
+      if (!isset($rule->dependencies) || !in_array('commerce_payment', $rule->dependencies)) {
+        continue;
+      }
+
+      foreach ($rule->actions() as $action) {
+        // skip any actions that are not simple rules actions, ie loops
+        if (!($action instanceof RulesAction)) {
+          continue;
+        }
+
+        if ($action->getElementName() == 'commerce_payment_enable_' . $method_id) {
+          $instance_id = commerce_payment_method_instance_id($method_id, $rule);
+          $cached_ids[$method_id][$instance_id] = $rule->active;
+          continue 2; // skip to next rule
+        }
+      }
+    }
+  }
+
+  // load instances
+  $instances = array();
+  if (!empty($cached_ids[$method_id])) {
+    foreach ($cached_ids[$method_id] as $instance_id => $instance_active) {
+      if ($instance_active || $include_disabled) {
+        $instances[$instance_id] = commerce_payment_method_instance_load($instance_id);
+      }
+    }
+  }
+
+  return $instances;
 }
