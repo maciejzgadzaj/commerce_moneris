@@ -238,7 +238,7 @@ function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $paymen
   // they have been already called.
 
   // Allow other modules to alter the $data.
-  drupal_alter('commerce_moneris_hpp_data', $data);
+  drupal_alter('commerce_moneris_hpp_data', $data, $order);
 
   // Add remaining required details.
   switch ($gateway) {
