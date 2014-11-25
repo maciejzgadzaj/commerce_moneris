@@ -11,12 +11,6 @@ define('COMMERCE_MONERIS_HPP_URL_US_TEST', 'https://esplusqa.moneris.com/DPHPP/i
 define('COMMERCE_MONERIS_HPP_URL_CA_PROD', 'https://www3.moneris.com/HPPDP/index.php');
 define('COMMERCE_MONERIS_HPP_URL_CA_TEST', 'https://esqa.moneris.com/HPPDP/index.php');
 
-define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_PURCHASE', 'purchase');
-define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH', 'preauth');
-define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_ACHDEBIT', 'achdebit');
-define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_CAVV_PURCHASE', 'cavv_purchase');
-define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_CAVV_PREAUTH', 'cavv_preauth');
-
 define('COMMERCE_PAYMENT_STATUS_MONERIS_CANCELLED', 'moneris_cancelled');
 
 /**

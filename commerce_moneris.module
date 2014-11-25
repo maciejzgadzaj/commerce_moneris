@@ -11,6 +11,14 @@ define('COMMERCE_MONERIS_USA', 'us');
 define('COMMERCE_MONERIS_PRODUCTION', 'prod');
 define('COMMERCE_MONERIS_TEST', 'test');
 
+// These constants should really sit in hpp module, but they are also used
+// by the API module, so they need to be somewhere available for both.
+define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_PURCHASE', 'purchase');
+define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_AUTH', 'preauth');
+define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_ACHDEBIT', 'achdebit');
+define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_CAVV_PURCHASE', 'cavv_purchase');
+define('COMMERCE_MONERIS_HPP_TRANSACTION_TYPE_CAVV_PREAUTH', 'cavv_preauth');
+
 /**
  * Implements hook_permission().
  */
