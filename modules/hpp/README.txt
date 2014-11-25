@@ -14,11 +14,12 @@ INSTALLATION
    test ones for both gateways below in "Test store_ids and hpp_keys" section),
    and configure other options as required.
 
-   If you want to use SSL (and you want to do it), you need to download
-   the cacert.pem and upload it to your server (if it is not already there).
-   On the configuration page, you have to set the path to that file, either
-   absolute (if you downloaded it outside of your Drupal installation directory)
-   or relative to your Drupal installation.
+   Note that Refund/Reverse/Capture transactions are done using Moneris API
+   payment solution (they are not supported by HPP). If you are planning to use
+   them, you need to have Moneris API module enabled and API payment method
+   configured (please refer to API README.txt file for instructions how to do
+   it). One important thing here is that both payment method must use the same
+   Moneris store, otherwise these additional transaction types will not work.
 
 3. Configure your Hosted Paypage in Merchant Resource Centre.
 
@@ -66,6 +67,10 @@ INSTALLATION
 
      Please note that in the production environment response urls must be secure
      (HTTPS). Self signed certificates will work. HTTP addresses will not work.
+
+     Also, asyncronous transaction responses are always returned over port 443
+     (even in the test environment). Make sure this port is open on your
+     firewall, and properly redirected to your testing server if required.
 
 
 
@@ -121,7 +126,9 @@ expiry date.
   | MasterCard    | 5454545454545454  |
   | Visa          | 4242424242424242  |
   |               | 4005554444444403  |
+  | Visa Debit    | 4506441111111115  |
   | Amex          | 373599005095005   |
+  | Discover      | 6011000000000012  |
   | Pinless Debit | 4496270000164824  |
 
 
@@ -131,9 +138,11 @@ expiry date.
   |---------------|-------------------|
   | MasterCard    | 5454545454545454  |
   | Visa          | 4242424242424242  |
+  | Visa Debit    | 4506441111111115  |
   | Amex          | 373599005095005   |
   | JCB           | 3566007770015365  |
   | Diners        | 36462462742008    |
+  | Discover      | 6011000000000012  |
 
 
 
