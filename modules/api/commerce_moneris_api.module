@@ -1075,8 +1075,13 @@ function commerce_moneris_api_request($mpg_transaction, $payment_method, $order)
     if (!empty($log->txn['cvd_value'])) {
       $log->txn['cvd_value'] = str_repeat('*', strlen($log->txn['cvd_value']));
     }
+    // We are sending 'cvdInfo' for CA gateway...
     if (!empty($log->cvdInfo->params['cvd_value'])) {
       $log->cvdInfo->params['cvd_value'] = str_repeat('*', strlen($log->cvdInfo->params['cvd_value']));
+    }
+    // ...but 'cvd' to US gateway.
+    if (!empty($log->cvd->params['cvd_value'])) {
+      $log->cvd->params['cvd_value'] = str_repeat('*', strlen($log->cvd->params['cvd_value']));
     }
     watchdog('commerce_moneris_api', '<pre>' . check_plain(print_r($log, TRUE)) . '</pre>', array(), WATCHDOG_DEBUG);
   }
