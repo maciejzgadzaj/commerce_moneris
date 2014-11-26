@@ -76,31 +76,6 @@ function commerce_moneris_gateways($translated = FALSE) {
 }
 
 /**
- * Logs Moneris API-specific debug message.
- *
- * @param string $module
- *   The module initiating the logging.
- * @param string $message
- *   The message to be added to the log.
- * @param int $order_id
- *   The order object.
- * @param string $gateway
- *   The gateway the request was sent to.
- * @param string $environment
- *   The environment being used.
- * @param string|null $link
- *   Link to relevant page providing more information.
- */
-function commerce_moneris_log($module, $message, $order_id, $gateway, $environment, $link = NULL) {
-  watchdog($module, '@order_id-@gateway-@environment: !message', array(
-    '@order_id' => $order_id,
-    '@gateway' => $gateway,
-    '@environment' => $environment,
-    '!message' => $message,
-  ), WATCHDOG_DEBUG, $link);
-}
-
-/**
  * Returns CVD indicator value description for specific CVD response code.
  *
  * @param string $cvd_response_code

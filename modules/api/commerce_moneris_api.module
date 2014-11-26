@@ -578,6 +578,7 @@ function commerce_moneris_api_settings_form($settings = array()) {
   $form['log'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Log the following messages for debugging'),
+    '#description' => t('Basic transaction-related request and response data will be saved in transaction <em>payload</em> property regardless of this setting. Enabling this option will save additional information on each transaction request and response in the dblog.'),
     '#options' => array(
       'request' => t('API request messages'),
       'response' => t('API response messages'),
@@ -721,6 +722,11 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
   // in hook_commerce_moneris_txnarray_alter() implementations will be
   // overwritten by our $cc_data values.
   $txn_array = array_merge($txn_array, $cc_data);
+
+  $transaction->payload['request'] = $txn_array;
+  $transaction->payload['request']['pan'] = str_repeat('*', strlen($transaction->payload['request']['pan']) - 4) . substr($transaction->payload['request']['pan'], -4);
+  $transaction->payload['request']['cvd_value'] = str_repeat('*', strlen($transaction->payload['request']['cvd_value']));
+  commerce_payment_transaction_save($transaction);
 
   // Load native Moneris library relevant to selected gateway.
   commerce_moneris_api_libraries_load('moneris-api-' . $gateway);
@@ -1050,27 +1056,21 @@ function commerce_moneris_api_request($mpg_transaction, $payment_method, $order)
     // Mask the credit card number, expiraton date and CVV code
     // before saving it to the dblog.
     if (!empty($log->txn['pan'])) {
-      $log->txn['pan'] = str_repeat('X', strlen($log->txn['pan']) - 4) . substr($log->txn['pan'], -4);
-    }
-    if (!empty($log->txn['expdate'])) {
-      $log->txn['expdate'] = str_repeat('X', strlen($log->txn['expdate']));
+      $log->txn['pan'] = str_repeat('*', strlen($log->txn['pan']) - 4) . substr($log->txn['pan'], -4);
     }
     if (!empty($log->txn['cvd_value'])) {
-      $log->txn['cvd_value'] = str_repeat('X', strlen($log->txn['cvd_value']));
+      $log->txn['cvd_value'] = str_repeat('*', strlen($log->txn['cvd_value']));
     }
     if (!empty($log->cvdInfo->params['cvd_value'])) {
-      $log->cvdInfo->params['cvd_value'] = str_repeat('X', strlen($log->cvdInfo->params['cvd_value']));
+      $log->cvdInfo->params['cvd_value'] = str_repeat('*', strlen($log->cvdInfo->params['cvd_value']));
     }
-    commerce_moneris_log('commerce_moneris_api', 'request: <pre>' . check_plain(print_r($log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    watchdog('commerce_moneris_api', '<pre>' . check_plain(print_r($log, TRUE)) . '</pre>', array(), WATCHDOG_DEBUG);
   }
 
   // Prepare Moneris request object and send it to their gateway.
   $mpg_request = new mpgRequest($mpg_transaction);
   $mpg_result = new mpgHttpsPost($store_id, $api_token, $mpg_request, $environment, $cacert_path);
   $mpg_response = $mpg_result->getMpgResponse();
-
-  // Add original cURL response to received mpgResponse object.
-  // Including cURL error if any.
 
   // Log the full response.
   if (!empty($payment_method['settings']['log']['response'])) {
@@ -1079,9 +1079,9 @@ function commerce_moneris_api_request($mpg_transaction, $payment_method, $order)
     if ($curl_error = $mpg_result->getCurlError()) {
       $curl_log += $curl_error;
     }
-    commerce_moneris_log('commerce_moneris_api', 'cURL response: <pre>' . check_plain(print_r($curl_log, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    watchdog('commerce_moneris_api', 'cURL response: <pre>' . check_plain(print_r($curl_log, TRUE)) . '</pre>', array(), WATCHDOG_DEBUG);
     // Log the gateway response.
-    commerce_moneris_log('commerce_moneris_api', 'Moneris response: <pre>' . check_plain(print_r($mpg_response->responseData, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    watchdog('commerce_moneris_api', '<pre>' . check_plain(print_r($mpg_response, TRUE)) . '</pre>', array(), WATCHDOG_DEBUG);
   }
 
   return $mpg_response->responseData;

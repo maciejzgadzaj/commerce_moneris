@@ -229,7 +229,6 @@ function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $paymen
   // Therefore we will combine it with our local transaction ID.
   $unique_order_id = $order->order_id . '-' . $transaction->transaction_id;
   $transaction->payload['unique_order_id'] = $unique_order_id;
-  commerce_payment_transaction_save($transaction);
 
   // Create transaction data.
   switch ($gateway) {
@@ -269,9 +268,12 @@ function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $paymen
       break;
   }
 
+  $transaction->payload['request'] = $data;
+  commerce_payment_transaction_save($transaction);
+
   // Log the request if required.
   if (!empty($payment_method['settings']['log']['request'])) {
-    commerce_moneris_log('commerce_moneris_hpp', 'request: <pre>' . check_plain(print_r($data, TRUE)) . '</pre>', $order->order_id, $gateway, $environment);
+    watchdog('commerce_moneris_hpp', 'request: <pre>' . check_plain(print_r($data, TRUE)) . '</pre>', array(), WATCHDOG_DEBUG);
   }
 
   // Prepare redirect form.
@@ -380,8 +382,8 @@ function commerce_moneris_hpp_callback_response($callback_type) {
     // Log the error message in the dblog, both in case of response
     // and validate gateway callbacks.
     watchdog('commerce_moneris_hpp', '@error. Gateway response: @response', array(
-      'error' => $error,
-      'response' => '<pre>' . var_export($response, TRUE) . '</pre>',
+      '@error' => $error,
+      '@response' => '<pre>' . var_export($response, TRUE) . '</pre>',
     ), WATCHDOG_ERROR);
 
     // In case of the response callback display the error message to the user
