@@ -147,6 +147,32 @@ expiry date.
 
 
 
+TESTING APPROVAL, DECLINE AND ERROR SITUATIONS
+==============================================
+
+Extract from Moneris HPP Merchant Integration Guide:
+
+The test environment has been designed to replicate our production environment
+as closely as possible. One major difference is that we are unable to send test
+transactions onto the production authorization network and thus issuer responses
+are simulated. Additionally, the requirement to emulate approval, decline and
+error situations dictates that we use certain transaction variables to initiate
+various response and error situations.
+
+The test environment will approve and decline transactions based on the penny
+value of the amount field.
+For example, a transaction made for the amount of $9.00 or $1.00 will approve
+since the .00 penny value is set to approve in the test environment.
+Transactions in the test environment should not exceed $10.00. This limit does
+not exist in the production environment.
+For a list of all current test environment responses for various penny values,
+please see the Test Environment Penny Response table as well as the Test
+Environment eFraud Response table, available for download at
+https://developer.moneris.com
+
+
+
+
 ACCESSING MERCHANT RESOURCE CENTRE
 ==================================
 
