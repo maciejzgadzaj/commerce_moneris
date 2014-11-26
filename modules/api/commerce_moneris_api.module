@@ -1155,7 +1155,8 @@ function commerce_moneris_api_response_process($response_data, $transaction) {
       $transaction->message .= '<br />' . t('CVD result: @result', array('@result' => commerce_moneris_get_cvd_response(substr($response_data['CvdResultCode'], 1))));
     }
     if (!empty($response_data['AvsResultCode']) && $response_data['AvsResultCode'] != 'null') {
-      $transaction->message .= '<br />' . t('AVS result: @result', array('@result' => commerce_moneris_get_avs_response($response_data['AvsResultCode'], $response_data['CardType'])));
+      $gateway = $transaction->payload['gateway'];
+      $transaction->message .= '<br />' . t('AVS result: @result', array('@result' => commerce_moneris_get_avs_response($response_data['AvsResultCode'], $response_data['CardType'], $gateway)));
     }
     if (!empty($response_data['CavvResultCode']) && $response_data['CavvResultCode'] != 'null') {
       $transaction->message .= '<br />' . t('CAVV result: @result', array('@result' => commerce_moneris_get_cavv_response($response_data['CavvResultCode'])));

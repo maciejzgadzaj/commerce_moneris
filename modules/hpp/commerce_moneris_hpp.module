@@ -506,7 +506,7 @@ function commerce_moneris_hpp_process_response($response, $payment_method, &$tra
     $avs_field = commerce_moneris_hpp_get_response_field_name('avs', $gateway);
     $card_type_field = commerce_moneris_hpp_get_response_field_name('card_type', $gateway);
     if (!empty($response[$avs_field]) && $response[$avs_field] != 'null') {
-      $transaction->message .= '<br />' . t('AVS result: @result', array('@result' => commerce_moneris_get_avs_response($response[$avs_field], $response[$card_type_field])));
+      $transaction->message .= '<br />' . t('AVS result: @result', array('@result' => commerce_moneris_get_avs_response($response[$avs_field], $response[$card_type_field], $gateway)));
     }
     $cavv_field = commerce_moneris_hpp_get_response_field_name('cavv', $gateway);
     if (!empty($response[$cavv_field]) && $response[$cavv_field] != 'null') {
