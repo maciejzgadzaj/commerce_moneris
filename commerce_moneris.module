@@ -8,6 +8,9 @@
 define('COMMERCE_MONERIS_CANADA', 'ca');
 define('COMMERCE_MONERIS_USA', 'us');
 
+define('COMMERCE_MONERIS_CURRENCY_US', 'USD');
+define('COMMERCE_MONERIS_CURRENCY_CA', 'CAD');
+
 define('COMMERCE_MONERIS_PRODUCTION', 'prod');
 define('COMMERCE_MONERIS_TEST', 'test');
 
@@ -73,6 +76,19 @@ function commerce_moneris_gateways($translated = FALSE) {
   }
 
   return $gateways;
+}
+
+/**
+ * Returns currency code for the selected Moneris gateway.
+ *
+ * @param string $gateway
+ *   String identifying current Moneris gateway.
+ *
+ * @return string
+ *   Currency code for the current Moneris gateway.
+ */
+function commerce_moneris_currency($gateway) {
+  return ($gateway == COMMERCE_MONERIS_USA) ? COMMERCE_MONERIS_CURRENCY_US : COMMERCE_MONERIS_CURRENCY_CA;
 }
 
 /**

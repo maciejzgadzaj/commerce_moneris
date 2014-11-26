@@ -210,25 +210,42 @@ function commerce_moneris_hpp_redirect_form($form, &$form_state, $order, $paymen
 
   // Amount.
   $wrapper = entity_metadata_wrapper('commerce_order', $order);
-  $currency = $wrapper->commerce_order_total->currency_code->value();
-  $amount = number_format(commerce_currency_amount_to_decimal($wrapper->commerce_order_total->amount->value(), $currency), 2, '.', '');
+  $currency_code = $wrapper->commerce_order_total->currency_code->value();
+  $amount = $wrapper->commerce_order_total->amount->value();
 
   // Save initial transaction.
   $transaction = commerce_payment_transaction_new('commerce_moneris_hpp', $order->order_id);
   $transaction->instance_id = $payment_method['instance_id'];
-  $transaction->amount = $wrapper->commerce_order_total->amount->value();
-  $transaction->currency_code = $currency;
   $transaction->status = COMMERCE_PAYMENT_STATUS_PENDING;
   $transaction->payload = array(
     'gateway' => $gateway,
     'server' => $environment,
   );
+
+  // Moneris gateways operate in one currency only - either USD (US gateway)
+  // or CAD (CA gateway). Therefore currency codes are not being sent to the
+  // gateway at all when a new transaction is requested. Therefore if our
+  // charge currency is different from required, we need to convert the charge
+  // amount to the required currency first.
+  $gateway_currency_code = commerce_moneris_currency($gateway);
+  if ($currency_code != $gateway_currency_code) {
+    $transaction->payload['original_amount'] = $amount;
+    $transaction->payload['original_currency_code'] = $currency_code;
+    $amount = round(commerce_currency_convert($amount, $currency_code, $gateway_currency_code));
+    $currency_code = $gateway_currency_code;
+  }
+
+  $transaction->amount = $amount;
+  $transaction->currency_code = $currency_code;
   commerce_payment_transaction_save($transaction);
 
   // Order number sent to Moneris must be unique per transaction.
   // Therefore we will combine it with our local transaction ID.
   $unique_order_id = $order->order_id . '-' . $transaction->transaction_id;
   $transaction->payload['unique_order_id'] = $unique_order_id;
+
+  // Convert the price amount to a user friendly decimal value.
+  $amount = number_format(commerce_currency_amount_to_decimal($amount, $currency_code), 2, '.', '');
 
   // Create transaction data.
   switch ($gateway) {
