@@ -816,10 +816,21 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount,
   $unique_order_id = $order->order_id . '-' . $transaction->transaction_id;
   $transaction->payload['unique_order_id'] = $unique_order_id;
 
+  $related_order_id = $purchase_transaction->payload['unique_order_id'];
+  // When doing a Refund on the Capture transactions, we need to reference
+  // not the Capture transaction itself, but one step earlier - original
+  // PreAuth/ReAuth instead.
+  if (!empty($purchase_transaction->payload['request']['type'])) {
+    $related_type = $purchase_transaction->payload['request']['type'];
+    if ($related_type == 'us_completion' || $related_type == 'completion') {
+      $related_order_id = $purchase_transaction->payload['related_order_id'];
+    }
+  }
+
   // Create transaction data.
   $txn_array = array(
     'type' => ($gateway == COMMERCE_MONERIS_USA) ? 'us_refund' : 'refund',
-    'order_id' => $purchase_transaction->payload['unique_order_id'],
+    'order_id' => $related_order_id,
     'amount' => number_format($amount, 2, '.', ''),
     'txn_number' => $purchase_transaction->remote_id,
     // '7' stands for 'SSL enabled merchant'.
