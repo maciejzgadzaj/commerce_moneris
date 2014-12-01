@@ -173,6 +173,7 @@ function commerce_moneris_hpp_settings_form($settings = array()) {
       '#description' => t('Selected Moneris API payment method will be use for <em>Refund</em>, <em>Capture</em>, <em>ReAuth</em> and <em>Reverse</em> transactions.'),
       '#options' => $options,
       '#empty_option' => t('- Select -'),
+      '#default_value' => $settings['moneris_api'],
     );
   }
 
