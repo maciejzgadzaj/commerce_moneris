@@ -1,9 +1,5 @@
 name = Commerce Moneris
-description = Integration with Moneris payment. Works for Canada and US gateways.
+description = Integration with Moneris API and HPP payment methods. Works for Canada and US gateways.
 package = Commerce (contrib)
 dependencies[] = commerce_payment
 core = 7.x
-
-files[] = commerce_moneris.inc
-
-configure = admin/commerce/config/payment-methods/manage/commerce_payment_commerce_moneris
