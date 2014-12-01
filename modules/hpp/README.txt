@@ -65,12 +65,17 @@ INSTALLATION
      on payment method settings page (something like
      http://your-site.com/commerce-moneris-hpp/validate).
 
-     Please note that in the production environment response urls must be secure
-     (HTTPS). Self signed certificates will work. HTTP addresses will not work.
+     Please note that receiving this asyncronous response is required for
+     the payment transaction to be marked as completed. Without receiving such
+     response the payment transaction will keep its pending status.
 
      Also, asyncronous transaction responses are always returned over port 443
      (even in the test environment). Make sure this port is open on your
      firewall, and properly redirected to your testing server if required.
+
+     Finally, in the production environment response url must be secure (HTTPS).
+     Self signed certificates will work. HTTP addresses will not work.
+
 
 
 
