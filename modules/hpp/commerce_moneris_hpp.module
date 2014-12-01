@@ -164,7 +164,7 @@ function commerce_moneris_hpp_settings_form($settings = array()) {
 
   if (module_exists('commerce_moneris_api')) {
     $options = array();
-    foreach (commerce_moneris_hpp_payment_method_instances('commerce_moneris_api') as $instance => $method) {
+    foreach (commerce_moneris_payment_method_instances('commerce_moneris_api') as $instance => $method) {
       $options[$instance] = $method['title'];
     }
     $form['moneris_api'] = array(
@@ -591,65 +591,4 @@ function commerce_moneris_hpp_get_response_field_name($field, $gateway) {
 function commerce_moneris_hpp_get_transaction_type($response, $gateway) {
   $txn_type_field = commerce_moneris_hpp_get_response_field_name('txn_type', $gateway);
   return $response[$txn_type_field];
-}
-
-/**
- * Returns all payment method instances for a given payment method id
- *
- * @param $method_id
- *   A payment method id
- * @param $include_disabled
- *   Return enabled and disabled instances
- *
- * @return
- *   An array of all loaded payment method instances keyed by instance_id
- */
-function commerce_moneris_hpp_payment_method_instances($method_id, $include_disabled = FALSE) {
-  $cached_ids = &drupal_static(__FUNCTION__, array());
-  $include_disabled = !empty($include_disabled);
-
-  if (!array_key_exists($method_id, $cached_ids)) {
-    $cached_ids[$method_id] = array();
-
-    // load all rules ... no easier way
-    $rules_configs = rules_config_load_multiple(FALSE);
-
-    // find all rules with an action to enable this method
-    foreach ($rules_configs as $rule_name => $rule) {
-      // Only rules and sub-types have actions.
-      if (!($rule instanceof Rule)) {
-        continue;
-      }
-
-      // fast skip if rule does not depend on commerce_payment
-      if (!isset($rule->dependencies) || !in_array('commerce_payment', $rule->dependencies)) {
-        continue;
-      }
-
-      foreach ($rule->actions() as $action) {
-        // skip any actions that are not simple rules actions, ie loops
-        if (!($action instanceof RulesAction)) {
-          continue;
-        }
-
-        if ($action->getElementName() == 'commerce_payment_enable_' . $method_id) {
-          $instance_id = commerce_payment_method_instance_id($method_id, $rule);
-          $cached_ids[$method_id][$instance_id] = $rule->active;
-          continue 2; // skip to next rule
-        }
-      }
-    }
-  }
-
-  // load instances
-  $instances = array();
-  if (!empty($cached_ids[$method_id])) {
-    foreach ($cached_ids[$method_id] as $instance_id => $instance_active) {
-      if ($instance_active || $include_disabled) {
-        $instances[$instance_id] = commerce_payment_method_instance_load($instance_id);
-      }
-    }
-  }
-
-  return $instances;
 }
