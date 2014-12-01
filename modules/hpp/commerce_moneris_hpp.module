@@ -405,7 +405,7 @@ function commerce_moneris_hpp_callback_response($callback_type) {
 
     // In case of the response callback display the error message to the user
     // and move the order backwards in the checkout process.
-    if ($callback_type == 'response') {
+    if (!empty($order) && $callback_type == 'response') {
       commerce_payment_redirect_pane_previous_page($order);
       drupal_set_message(t($error), 'error');
     }
@@ -415,7 +415,7 @@ function commerce_moneris_hpp_callback_response($callback_type) {
   // backwards, if the transaction failed), we need to redirect the user to
   // the relevant page. No need to redirect for validation callback, as
   // no page is being displayed in this case.
-  if ($callback_type == 'response') {
+  if (!empty($order) && $callback_type == 'response') {
     drupal_goto(commerce_checkout_order_uri($order));
   }
 }
