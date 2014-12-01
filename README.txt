@@ -12,6 +12,13 @@ Commerce Moneris comes with 2 submodules, providing integration with
 
    On-site payment method provided by Commerce Moneris API module.
 
+   * support for Purchase/Refund/PreAuth/Capture/Reverse/ReAuth transactions
+   * support for eFraud (CVD and AVS verification)
+   * support for cURL CA Root Certificate for SSL connection
+   * support for currency conversion
+   * independent configurations for US/CA gateways and test/prod environments
+   * additional request/response debugging
+
    Detailed payment solution description is available
    on the Moneris Solutions Developer Portal:
 
@@ -22,6 +29,16 @@ Commerce Moneris comes with 2 submodules, providing integration with
 
    Off-site payment method provided by Commerce Moneris HPP module.
 
+   * support for Purchase/PreAuth transaction (configured in Hosted Paypage
+     configuration in Merchant Resource Centre)
+   * support for Refund/Capture/Reverse/ReAuth transactions
+     through Moneris API payment method
+   * support for transaction verification through Asyncronous Transaction
+     Response
+   * support for currency conversion
+   * independent configurations for US/CA gateways and test/prod environments
+   * additional request/response debugging
+
    Detailed payment solution description is available
    on the Moneris Solutions Developer Portal:
 
@@ -30,16 +47,16 @@ Commerce Moneris comes with 2 submodules, providing integration with
 
 
 
-TRANSACTION CURRENCIES
+CURRENCY CONVERSION
+===================
 
 Both gateways support only one currency native to their relevant country - USD
 for US gateway and CAD in case of CA gateway. If a transaction is being made
-and the payment requested in any other currency, before sending it to the
+and the payment is requested in any other currency, before sending it to the
 gateway it will be converted to the available gateway currency using Drupal
 Commerce currency conversion functionality (commerce_currency_convert()).
 
 See https://drupalcommerce.org/user-guide/currency-conversion for more info.
-
 
 
 
