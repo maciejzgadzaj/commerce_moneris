@@ -748,7 +748,7 @@ function commerce_moneris_api_transaction_purchase($payment_method, $order, $cha
   // below, so we add them only after they have been already called.
 
   // Allow other modules to alter the transaction array.
-  drupal_alter('commerce_moneris_api_txnarray', $txn_array, $order);
+  drupal_alter('commerce_moneris_api_data', $txn_array, $order);
 
   // Prepare credit card data to be added to transaction array.
   $cc_data = array(
@@ -863,7 +863,7 @@ function commerce_moneris_api_transaction_refund($purchase_transaction, $amount,
   );
 
   // Allow other modules to alter the transaction array.
-  drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+  drupal_alter('commerce_moneris_api_data', $txn_array, $order);
 
   $transaction->payload['request'] = $txn_array;
   commerce_payment_transaction_save($transaction);
@@ -934,7 +934,7 @@ function commerce_moneris_api_transaction_capture($auth_transaction, $amount, $p
   );
 
   // Allow other modules to alter the transaction array.
-  drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+  drupal_alter('commerce_moneris_api_data', $txn_array, $order);
 
   $transaction->payload['request'] = $txn_array;
   commerce_payment_transaction_save($transaction);
@@ -997,7 +997,7 @@ function commerce_moneris_api_transaction_reverse($auth_transaction, $amount, $p
   );
 
   // Allow other modules to alter the transaction array.
-  drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+  drupal_alter('commerce_moneris_api_data', $txn_array, $order);
 
   $transaction->payload['request'] = $txn_array;
   commerce_payment_transaction_save($transaction);
@@ -1063,7 +1063,7 @@ function commerce_moneris_api_transaction_reauth($auth_transaction, $amount, $pa
   );
 
   // Allow other modules to alter the transaction array.
-  drupal_alter('commerce_moneris_txnarray', $txn_array, $order);
+  drupal_alter('commerce_moneris_api_data', $txn_array, $order);
 
   $transaction->payload['request'] = $txn_array;
   commerce_payment_transaction_save($transaction);
