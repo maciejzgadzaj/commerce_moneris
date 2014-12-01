@@ -428,6 +428,31 @@ function commerce_moneris_api_access_common($order, $transaction) {
     return FALSE;
   }
 
+  // Get all *enabled* API payment method instances.
+  $enabled_api_instances = commerce_moneris_payment_method_instances('commerce_moneris_api');
+
+  // Refuse access if original API payment method instance is no longer enabled.
+  if (
+    $transaction->payment_method == 'commerce_moneris_api'
+    && !in_array($transaction->instance_id, array_keys($enabled_api_instances))
+  ) {
+    return FALSE;
+  }
+
+  // Original payment was done using HPP payment method.
+  if ($transaction->payment_method == 'commerce_moneris_hpp') {
+    $hpp_instance = commerce_payment_method_instance_load($transaction->instance_id);
+    // No API payment method is selected for original HPP method instance.
+    if (empty($hpp_instance['settings']['moneris_api'])) {
+      return FALSE;
+    }
+    // API payment method selected in HPP configuration is not enabled.
+    $api_instance = commerce_payment_method_instance_load($hpp_instance['settings']['moneris_api']);
+    if (!$api_instance || !in_array($hpp_instance['settings']['moneris_api'], array_keys($enabled_api_instances))) {
+      return FALSE;
+    }
+  }
+
   return TRUE;
 }
 
