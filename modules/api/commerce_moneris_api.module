@@ -1022,6 +1022,8 @@ function commerce_moneris_api_transaction_reauth($auth_transaction, $amount, $pa
     'amount' => $amount,
     // '7' stands for 'SSL enabled merchant'.
     'crypt_type' => '7',
+    // Optional fields.
+    'cust_id' => $order->uid,
   );
 
   // Allow other modules to alter the transaction array.
