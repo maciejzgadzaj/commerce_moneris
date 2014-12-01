@@ -261,7 +261,7 @@ function commerce_moneris_get_avs_response($avs_response_code, $card_type, $gate
         }
     }
   }
-  return t('AVS code not recognised.');
+  return t('AVS check was not performed');
 }
 
 /**
