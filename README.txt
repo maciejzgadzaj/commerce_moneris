@@ -65,3 +65,33 @@ INSTALLATION
 
 Please refer to the README.txt file available in relevant module directory
 on how to install and configure each module and provided payment method.
+
+
+
+UPGRADING FROM 1.X
+==================
+
+Please note there is no upgrade path from version 1.x of the module.
+
+Generally it is advised to disable and uninstall previous version of the
+module completely (including deleting the remaining payment methods after
+the module has been uninstalled) before downloading and enabling the new
+version.
+
+The most important changes introduced in version 2.x compared to previous
+1.x include:
+
+  * on-site Moneris payment method ID has been changed to better reflect the
+    solution name - previously it has been 'commerce_moneris', now it is
+    'commerce_moneris_api'
+  * payment method settings use different structure compared to the previous
+    module version - they will need to be configured again, as the old settings
+    will not work
+  * the following hooks have been changed:
+    - hook_commerce_moneris_txnarray_alter() - replaced by
+      hook_commerce_moneris_api_data_alter(), also the transaction array being
+      passed to this hook in the first parameter does not include some data
+      anymore (for example credit card details)
+    - hook_commerce_moneris_hpp_settings_alter() - removed completely
+    - hook_commerce_moneris_hpp_data_alter() - added $order as a second
+      parameter
